@@ -1,0 +1,23 @@
+# .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# Environment files
+backend/**/.env
+frontend/.env
+
+# Node
+node_modules/
+dist/
+
+#documentation
+documents/
+
+# database
+database/
+
+.DS_Store
+Thumbs.db
