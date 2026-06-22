@@ -179,10 +179,10 @@ npm run dev --prefix frontend
 | Role | Email | Password |
 |------|-------|----------|
 | **Admin** | `thangtruong1808@gmail.com` | `THAN@#wcbcw26Todo=^` |
-| **User** | `thangdlk072@gmail.com` | `Thang2026!@#$%` |
-| **User** | `thang.truong.swin@gmail.com` | `Thang2026!@#$%` |
-| **User** | `thang.truong.aws@gmail.com` | `Thang2026!@#$%` |
-| **Project Manager** | `thang.truong.truganina@gmail.com` | `Thang2026!@#$%` |
+| **User** | `thangdlk072@gmail.com` | `^Toyocbta2026^&!@#$%` |
+| **User** | `thang.truong.swin@gmail.com` | `^Toyocbta2026^&!@#$%` |
+| **User** | `thang.truong.aws@gmail.com` | `^Toyocbta2026^&!@#$%` |
+| **Project Manager** | `thang.truong.truganina@gmail.com` | `^Toyocbta2026^&!@#$%` |
 
 **Role codes:** `0` = User, `1` = Admin, `2` = ProjectManager
 
