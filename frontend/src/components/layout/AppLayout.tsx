@@ -8,6 +8,7 @@ import {
   ClipboardIcon,
   LogoutIcon,
   ProfileIcon,
+  UsersIcon,
 } from '../icons/Icons'
 import Spinner from '../Spinner'
 import { logout, type AppDispatch, type RootState } from '../../store'
@@ -63,6 +64,12 @@ export default function AppLayout() {
               <NavLink to="/dashboard" className={linkClass}>
                 <ChartIcon size={16} />
                 Dashboard
+              </NavLink>
+            )}
+            {user?.role === 'Admin' && (
+              <NavLink to="/users" className={linkClass}>
+                <UsersIcon size={16} />
+                Users
               </NavLink>
             )}
             <NavLink to="/profile" className={linkClass}>

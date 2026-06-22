@@ -8,4 +8,6 @@ public interface ICurrentUserService
     UserRole? Role { get; }
     bool IsAuthenticated { get; }
     bool IsAdmin { get; }
+    bool IsProjectManager { get; }
+    string? FullName { get; }
 }

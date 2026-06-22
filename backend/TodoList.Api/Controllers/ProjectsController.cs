@@ -50,6 +50,20 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    [HttpGet("{id:long}/assignable-users")]
+    [Authorize(Roles = "ProjectManager")]
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetAssignableUsers(long id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _projectService.GetAssignableUsersForProjectAsync(id, cancellationToken));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+    }
+
     [HttpDelete("{id:long}/members/{userId:long}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RemoveMember(long id, long userId, CancellationToken cancellationToken)

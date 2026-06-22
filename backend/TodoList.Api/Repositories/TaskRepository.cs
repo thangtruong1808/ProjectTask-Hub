@@ -26,6 +26,17 @@ public class TaskRepository : ITaskRepository
         return tasks.AsList();
     }
 
+    public async Task<IReadOnlyList<TaskItem>> GetAllForProjectManagerAsync(long userId, string? search, int? status, long? projectId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = _connectionFactory.CreateConnection();
+        var tasks = await connection.QueryAsync<TaskItem>(
+            new CommandDefinition(
+                TaskSqlQueries.SelectAllForProjectManager,
+                new { UserId = userId, Search = search, Status = status, ProjectId = projectId is > 0 ? projectId.Value : 0L },
+                cancellationToken: cancellationToken));
+        return tasks.AsList();
+    }
+
     public async Task<IReadOnlyList<TaskItem>> GetAllForUserAsync(long userId, string? search, int? status, long? projectId, CancellationToken cancellationToken = default)
     {
         await using var connection = _connectionFactory.CreateConnection();

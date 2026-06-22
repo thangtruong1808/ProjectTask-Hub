@@ -21,6 +21,16 @@ internal static class TaskSqlQueries
         ORDER BY t.UpdatedAt DESC;
         """;
 
+    public static readonly string SelectAllForProjectManager = $"""
+        SELECT {SelectColumns}
+        {FromJoin}
+        INNER JOIN ProjectMembers pm ON pm.ProjectId = t.ProjectId AND pm.UserId = @UserId
+        WHERE (@Search IS NULL OR @Search = '' OR t.Name LIKE CONCAT('%', @Search, '%'))
+          AND (@Status IS NULL OR t.Status = @Status)
+          AND (@ProjectId = 0 OR t.ProjectId = @ProjectId)
+        ORDER BY t.UpdatedAt DESC;
+        """;
+
     public static readonly string SelectAllForUser = $"""
         SELECT {SelectColumns}
         {FromJoin}

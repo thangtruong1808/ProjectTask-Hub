@@ -42,6 +42,22 @@ public class UserDto
     public UserRole Role { get; set; }
 }
 
+public class UserListItemDto
+{
+    public long Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public UserRole Role { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class UpdateUserRoleRequest
+{
+    public UserRole Role { get; set; }
+}
+
 public class AuthResponse
 {
     public string AccessToken { get; set; } = string.Empty;

@@ -86,4 +86,33 @@ public class ProjectRepository : IProjectRepository
                 cancellationToken: cancellationToken));
         return count > 0;
     }
+
+    public async Task<IReadOnlyList<ProjectManagerItem>> GetProjectManagersAsync(
+        long projectId,
+        long? assignedByUserId = null,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = _connectionFactory.CreateConnection();
+        var items = await connection.QueryAsync<ProjectManagerItem>(
+            new CommandDefinition(
+                ProjectSqlQueries.SelectProjectManagers,
+                new
+                {
+                    ProjectId = projectId,
+                    AssignedByUserId = assignedByUserId is > 0 ? assignedByUserId.Value : 0L,
+                },
+                cancellationToken: cancellationToken));
+        return items.AsList();
+    }
+
+    public async Task<IReadOnlyList<UserDto>> GetAssignableUsersAsync(long projectId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = _connectionFactory.CreateConnection();
+        var items = await connection.QueryAsync<UserDto>(
+            new CommandDefinition(
+                ProjectSqlQueries.SelectAssignableUsers,
+                new { ProjectId = projectId },
+                cancellationToken: cancellationToken));
+        return items.AsList();
+    }
 }

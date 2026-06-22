@@ -43,6 +43,12 @@ internal static class UserSqlQueries
         WHERE Id = @Id;
         """;
 
+    public const string UpdateRole = """
+        UPDATE Users
+        SET Role = @Role, UpdatedAt = @UpdatedAt
+        WHERE Id = @Id AND IsActive = 1;
+        """;
+
     public const string CountAll = """
         SELECT COUNT(*) FROM Users WHERE IsActive = 1;
         """;

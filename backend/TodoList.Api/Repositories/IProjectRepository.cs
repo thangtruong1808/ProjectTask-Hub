@@ -11,4 +11,9 @@ public interface IProjectRepository
     Task<bool> RemoveMemberAsync(long projectId, long userId, CancellationToken cancellationToken = default);
     Task<bool> ExistsActiveAsync(long projectId, CancellationToken cancellationToken = default);
     Task<bool> IsMemberAsync(long projectId, long userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ProjectManagerItem>> GetProjectManagersAsync(
+        long projectId,
+        long? assignedByUserId = null,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserDto>> GetAssignableUsersAsync(long projectId, CancellationToken cancellationToken = default);
 }

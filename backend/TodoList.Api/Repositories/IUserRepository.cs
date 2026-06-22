@@ -10,5 +10,6 @@ public interface IUserRepository
     Task<User> CreateAsync(User user, CancellationToken cancellationToken = default);
     Task<bool> UpdateProfileAsync(User user, CancellationToken cancellationToken = default);
     Task<bool> UpdatePasswordAsync(long id, string passwordHash, DateTime updatedAt, CancellationToken cancellationToken = default);
+    Task<bool> UpdateRoleAsync(long id, UserRole role, DateTime updatedAt, CancellationToken cancellationToken = default);
     Task<int> CountActiveAsync(CancellationToken cancellationToken = default);
 }

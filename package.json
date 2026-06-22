@@ -2,6 +2,7 @@
   "name": "todolist",
   "private": true,
   "scripts": {
+    "predev": "node scripts/free-dev-ports.mjs 5181 5173",
     "dev": "concurrently -k -n API,WEB -c blue,magenta \"npm run dev:backend\" \"npm run dev:frontend\"",
     "start": "npm run dev",
     "dev:backend": "dotnet run --project backend/TodoList.Api --launch-profile http",

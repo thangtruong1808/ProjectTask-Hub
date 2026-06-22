@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { UserRole } from '../../api/client'
-import { ShieldIcon, UserIcon } from '../icons/Icons'
+import { BriefcaseIcon, ShieldIcon, UserIcon } from '../icons/Icons'
 
 interface RoleSelectorProps {
   value: UserRole
@@ -22,9 +22,15 @@ const options: Array<{
     icon: <UserIcon size={22} />,
   },
   {
+    value: 'ProjectManager',
+    label: 'Project Manager',
+    description: 'Assign tasks and monitor project activity',
+    icon: <BriefcaseIcon size={22} />,
+  },
+  {
     value: 'Admin',
     label: 'Admin',
-    description: 'Full access, dashboard & task assignment',
+    description: 'Full access, dashboard & project setup',
     icon: <ShieldIcon size={22} />,
   },
 ]
@@ -35,7 +41,7 @@ export default function RoleSelector({ value, onChange, disabled, error }: RoleS
       <legend className="mb-1 block text-sm font-medium text-slate-700">
         Account role <span className="text-red-500">*</span>
       </legend>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {options.map((option) => {
           const selected = value === option.value
           return (

@@ -5,6 +5,7 @@ import AdminRoute from './components/layout/AdminRoute'
 import AppLayout from './components/layout/AppLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import DashboardPage from './pages/DashboardPage'
+import UsersPage from './pages/UsersPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import LoginPage from './pages/LoginPage'
 import ProfilePage from './pages/ProfilePage'
@@ -62,6 +63,7 @@ function App() {
             <Route path="profile" element={<ProfilePage />} />
             <Route element={<AdminRoute />}>
               <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="users" element={<UsersPage />} />
             </Route>
           </Route>
         </Route>

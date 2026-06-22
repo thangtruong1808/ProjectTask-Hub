@@ -1,7 +1,7 @@
 export const API_URL = import.meta.env.VITE_API_URL as string
 export const HUB_URL = API_URL.replace(/\/api\/?$/, '') + '/hubs/notifications'
 
-export type UserRole = 'User' | 'Admin'
+export type UserRole = 'User' | 'Admin' | 'ProjectManager'
 
 export interface UserDto {
   id: number

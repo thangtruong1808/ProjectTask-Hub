@@ -51,4 +51,40 @@ public class UsersController : ControllerBase
     {
         return Ok(await _userService.GetAssignableUsersAsync(cancellationToken));
     }
+
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<IEnumerable<UserListItemDto>>> GetUsers(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _userService.GetAllUsersAsync(cancellationToken));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+    }
+
+    [HttpPatch("{id:long}/role")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<UserDto>> UpdateUserRole(
+        long id,
+        UpdateUserRoleRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var updated = await _userService.UpdateUserRoleAsync(id, request.Role, cancellationToken);
+            return updated is null ? NotFound() : Ok(updated);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+    }
 }

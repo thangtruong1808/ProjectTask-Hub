@@ -11,26 +11,23 @@ public class TaskService : ITaskService
     private readonly ITaskRepository _taskRepository;
     private readonly IUserRepository _userRepository;
     private readonly IProjectRepository _projectRepository;
-    private readonly INotificationRepository _notificationRepository;
+    private readonly INotificationDispatchService _notificationDispatch;
     private readonly ICurrentUserService _currentUser;
-    private readonly IHubContext<NotificationHub> _hubContext;
     private readonly ILogger<TaskService> _logger;
 
     public TaskService(
         ITaskRepository taskRepository,
         IUserRepository userRepository,
         IProjectRepository projectRepository,
-        INotificationRepository notificationRepository,
+        INotificationDispatchService notificationDispatch,
         ICurrentUserService currentUser,
-        IHubContext<NotificationHub> hubContext,
         ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository;
         _userRepository = userRepository;
         _projectRepository = projectRepository;
-        _notificationRepository = notificationRepository;
+        _notificationDispatch = notificationDispatch;
         _currentUser = currentUser;
-        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -49,13 +46,20 @@ public class TaskService : ITaskService
             return [];
         }
 
-        return await _taskRepository.GetAllForUserAsync(_currentUser.UserId.Value, search, status, query.ProjectId, cancellationToken);
+        if (_currentUser.IsProjectManager)
+        {
+            return await _taskRepository.GetAllForProjectManagerAsync(
+                _currentUser.UserId.Value, search, status, query.ProjectId, cancellationToken);
+        }
+
+        return await _taskRepository.GetAllForUserAsync(
+            _currentUser.UserId.Value, search, status, query.ProjectId, cancellationToken);
     }
 
     public async Task<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         var task = await _taskRepository.GetByIdAsync(id, cancellationToken);
-        if (task is null || CanAccessTask(task))
+        if (task is null || await CanAccessTaskAsync(task, cancellationToken))
         {
             return task;
         }
@@ -102,41 +106,71 @@ public class TaskService : ITaskService
         }
 
         var existing = await _taskRepository.GetByIdAsync(id, cancellationToken);
-        if (existing is null || !CanAccessTask(existing))
+        if (existing is null || !await CanAccessTaskAsync(existing, cancellationToken))
         {
             return false;
         }
 
+        var previousStatus = existing.Status;
         existing.Name = request.Name.Trim();
         existing.Description = request.Description?.Trim();
         existing.Status = request.Status;
         existing.UpdatedAt = DateTime.UtcNow;
 
-        return await _taskRepository.UpdateAsync(existing, cancellationToken);
+        var updated = await _taskRepository.UpdateAsync(existing, cancellationToken);
+        if (updated && ShouldNotifyManagersForStatusChange(previousStatus, request.Status, _currentUser.Role))
+        {
+            var updater = await _userRepository.GetByIdAsync(_currentUser.UserId!.Value, cancellationToken);
+            if (updater is not null)
+            {
+                await _notificationDispatch.NotifyManagersStatusUpdatedAsync(
+                    existing, updater, request.Status, cancellationToken);
+            }
+        }
+
+        return updated;
     }
 
     public async Task<bool> UpdateStatusAsync(long id, UpdateTaskStatusRequest request, CancellationToken cancellationToken = default)
     {
         var existing = await _taskRepository.GetByIdAsync(id, cancellationToken);
-        if (existing is null || !CanAccessTask(existing))
+        if (existing is null || !await CanAccessTaskAsync(existing, cancellationToken))
         {
             return false;
         }
 
-        return await _taskRepository.UpdateStatusAsync(id, request.Status, DateTime.UtcNow, cancellationToken);
+        var previousStatus = existing.Status;
+        var updated = await _taskRepository.UpdateStatusAsync(id, request.Status, DateTime.UtcNow, cancellationToken);
+        if (updated && ShouldNotifyManagersForStatusChange(previousStatus, request.Status, _currentUser.Role))
+        {
+            existing.Status = request.Status;
+            var updater = await _userRepository.GetByIdAsync(_currentUser.UserId!.Value, cancellationToken);
+            if (updater is not null)
+            {
+                await _notificationDispatch.NotifyManagersStatusUpdatedAsync(
+                    existing, updater, request.Status, cancellationToken);
+            }
+        }
+
+        return updated;
     }
 
     public async Task<bool> AssignAsync(long id, AssignTaskRequest request, CancellationToken cancellationToken = default)
     {
-        if (!_currentUser.IsAdmin || !_currentUser.UserId.HasValue)
+        if (!_currentUser.IsProjectManager || !_currentUser.UserId.HasValue)
         {
-            throw new UnauthorizedAccessException("Only admins can assign tasks.");
+            throw new UnauthorizedAccessException("Only project managers can assign tasks.");
         }
 
         var task = await _taskRepository.GetByIdAsync(id, cancellationToken);
         if (task is null)
         {
             return false;
+        }
+
+        if (!await _projectRepository.IsMemberAsync(task.ProjectId, _currentUser.UserId.Value, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("You are not assigned to this project.");
         }
 
         var assignee = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
@@ -150,39 +184,21 @@ public class TaskService : ITaskService
             throw new ArgumentException("User must be assigned to the project before receiving tasks.");
         }
 
+        var assigner = await _userRepository.GetByIdAsync(_currentUser.UserId.Value, cancellationToken);
+        if (assigner is null)
+        {
+            return false;
+        }
+
         var now = DateTime.UtcNow;
-        var assigned = await _taskRepository.AssignAsync(id, request.UserId, _currentUser.UserId.Value, now, now, cancellationToken);
+        var assigned = await _taskRepository.AssignAsync(
+            id, request.UserId, _currentUser.UserId.Value, now, now, cancellationToken);
         if (!assigned)
         {
             return false;
         }
 
-        var projectLabel = FormatProjectLabel(null, task.ProjectName);
-        var taskName = task.Name.Trim();
-
-        var notification = await _notificationRepository.CreateAsync(new NotificationItem
-        {
-            UserId = request.UserId,
-            Type = "TaskAssigned",
-            Title = taskName,
-            Message = $"You have been assigned a task in {projectLabel}.",
-            TaskId = id,
-            IsRead = false,
-            CreatedAt = now
-        }, cancellationToken);
-
-        await _hubContext.Clients.User(request.UserId.ToString()).SendAsync("TaskAssigned", new
-        {
-            notificationId = notification.Id,
-            taskId = id,
-            taskName,
-            title = notification.Title,
-            message = notification.Message,
-            projectName = notification.ProjectName ?? task.ProjectName,
-            projectCode = notification.ProjectCode,
-            createdAt = notification.CreatedAt
-        }, cancellationToken);
-
+        await _notificationDispatch.NotifyUserTaskAssignedAsync(request.UserId, task, assigner, cancellationToken);
         return true;
     }
 
@@ -202,33 +218,36 @@ public class TaskService : ITaskService
         return await _taskRepository.DeleteAsync(id, cancellationToken);
     }
 
-    private bool CanAccessTask(TaskItem task)
+    private async Task<bool> CanAccessTaskAsync(TaskItem task, CancellationToken cancellationToken)
     {
         if (_currentUser.IsAdmin)
         {
             return true;
         }
 
-        return _currentUser.UserId.HasValue && task.AssignedToUserId == _currentUser.UserId.Value;
+        if (!_currentUser.UserId.HasValue)
+        {
+            return false;
+        }
+
+        if (_currentUser.IsProjectManager)
+        {
+            return await _projectRepository.IsMemberAsync(task.ProjectId, _currentUser.UserId.Value, cancellationToken);
+        }
+
+        return task.AssignedToUserId == _currentUser.UserId.Value;
     }
 
-    private static string FormatProjectLabel(string? projectCode, string? projectName)
+    private static bool ShouldNotifyManagersForStatusChange(
+        Models.TaskStatus previousStatus,
+        Models.TaskStatus newStatus,
+        UserRole? role)
     {
-        if (!string.IsNullOrWhiteSpace(projectCode) && !string.IsNullOrWhiteSpace(projectName))
+        if (role != UserRole.User || previousStatus == newStatus)
         {
-            return $"{projectCode.Trim()} — {projectName.Trim()}";
+            return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(projectName))
-        {
-            return projectName.Trim();
-        }
-
-        if (!string.IsNullOrWhiteSpace(projectCode))
-        {
-            return projectCode.Trim();
-        }
-
-        return "Unknown project";
+        return newStatus is Models.TaskStatus.InProgress or Models.TaskStatus.Completed;
     }
 }

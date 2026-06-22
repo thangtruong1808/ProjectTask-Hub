@@ -76,6 +76,17 @@ public class UserRepository : IUserRepository
         return rows > 0;
     }
 
+    public async Task<bool> UpdateRoleAsync(long id, UserRole role, DateTime updatedAt, CancellationToken cancellationToken = default)
+    {
+        await using var connection = _connectionFactory.CreateConnection();
+        var rows = await connection.ExecuteAsync(
+            new CommandDefinition(
+                UserSqlQueries.UpdateRole,
+                new { Id = id, Role = (int)role, UpdatedAt = updatedAt },
+                cancellationToken: cancellationToken));
+        return rows > 0;
+    }
+
     public async Task<int> CountActiveAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = _connectionFactory.CreateConnection();

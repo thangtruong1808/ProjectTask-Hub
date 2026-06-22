@@ -1,4 +1,4 @@
-import { apiFetch, type AuthResponse } from './client'
+import { apiFetch, type AuthResponse, type UserRole } from './client'
 
 export interface RegisterPayload {
   email: string
@@ -6,7 +6,7 @@ export interface RegisterPayload {
   firstName: string
   lastName: string
   phone?: string | null
-  role?: 'User' | 'Admin'
+  role?: UserRole
 }
 
 export interface LoginPayload {

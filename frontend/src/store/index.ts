@@ -82,6 +82,7 @@ export interface NotificationState {
   }>
   unreadCount: number
   loading: boolean
+  tasksRefreshToken: number
 }
 
 const notificationSlice = createSlice({
@@ -90,6 +91,7 @@ const notificationSlice = createSlice({
     items: [],
     unreadCount: 0,
     loading: false,
+    tasksRefreshToken: 0,
   } as NotificationState,
   reducers: {
     setLoading(state, action: PayloadAction<boolean>) {
@@ -129,6 +131,7 @@ const notificationSlice = createSlice({
         ...state.items,
       ].slice(0, 20)
       state.unreadCount += 1
+      state.tasksRefreshToken += 1
     },
     markRead(state, action: PayloadAction<{ id: number; readAt: string | null }>) {
       const item = state.items.find((n) => n.id === action.payload.id)
@@ -154,6 +157,7 @@ const notificationSlice = createSlice({
     clearNotifications(state) {
       state.items = []
       state.unreadCount = 0
+      state.tasksRefreshToken = 0
     },
   },
 })

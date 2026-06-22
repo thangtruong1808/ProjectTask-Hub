@@ -5,7 +5,6 @@ export interface ProjectItem {
   name: string
   code: string | null
 }
-
 export interface ProjectMemberItem {
   userId: number
   email: string
@@ -57,6 +56,18 @@ export async function removeProjectMember(projectId: number, userId: number) {
   return apiFetch<void>(`/projects/${projectId}/members/${userId}`, {
     method: 'DELETE',
   })
+}
+
+export async function getProjectAssignableUsers(projectId: number) {
+  const data = await apiFetch<Record<string, unknown>[]>(`/projects/${projectId}/assignable-users`)
+  return data.map((raw) => ({
+    id: Number(raw.id ?? raw.Id),
+    email: String(raw.email ?? raw.Email ?? ''),
+    firstName: String(raw.firstName ?? raw.FirstName ?? ''),
+    lastName: String(raw.lastName ?? raw.LastName ?? ''),
+    phone: raw.phone != null || raw.Phone != null ? String(raw.phone ?? raw.Phone) : null,
+    role: String(raw.role ?? raw.Role ?? 'User') as UserDto['role'],
+  }))
 }
 
 export function memberDisplayName(member: ProjectMemberItem | UserDto) {

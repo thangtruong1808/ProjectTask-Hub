@@ -11,6 +11,30 @@ import {
   type RootState,
 } from '../store'
 
+type NotificationPayload = {
+  notificationId: number
+  type?: string
+  taskId: number
+  taskName?: string
+  title?: string
+  message: string
+  projectName?: string | null
+  projectCode?: string | null
+  createdAt: string
+}
+
+function toStoreNotification(payload: NotificationPayload) {
+  return {
+    id: payload.notificationId,
+    title: payload.title ?? payload.taskName ?? 'Notification',
+    message: payload.message,
+    taskId: payload.taskId,
+    projectName: payload.projectName ?? null,
+    projectCode: payload.projectCode ?? null,
+    createdAt: payload.createdAt,
+  }
+}
+
 export function useSignalR() {
   const dispatch = useDispatch<AppDispatch>()
   const accessToken = useSelector((s: RootState) => s.auth.accessToken)
@@ -30,28 +54,12 @@ export function useSignalR() {
 
     connectionRef.current = connection
 
-    connection.on('TaskAssigned', (payload: {
-      notificationId: number
-      taskId: number
-      taskName: string
-      title?: string
-      message: string
-      projectName?: string | null
-      projectCode?: string | null
-      createdAt: string
-    }) => {
-      dispatch(
-        addNotification({
-          id: payload.notificationId,
-          title: payload.title ?? payload.taskName,
-          message: payload.message,
-          taskId: payload.taskId,
-          projectName: payload.projectName ?? null,
-          projectCode: payload.projectCode ?? null,
-          createdAt: payload.createdAt,
-        }),
-      )
-    })
+    const handleNotification = (payload: NotificationPayload) => {
+      dispatch(addNotification(toStoreNotification(payload)))
+    }
+
+    connection.on('TaskAssigned', handleNotification)
+    connection.on('NotificationReceived', handleNotification)
 
     connection.start().catch(() => {
       // SignalR optional fallback via polling

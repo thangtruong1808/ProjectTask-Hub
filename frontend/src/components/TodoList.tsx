@@ -11,7 +11,7 @@ import {
   type TaskStatus,
 } from '../api/todos'
 import { getAssignableUsers } from '../api/users'
-import { getProjects, type ProjectItem } from '../api/projects'
+import { getProjects, getProjectAssignableUsers, type ProjectItem } from '../api/projects'
 import type { UserDto } from '../api/client'
 import type { RootState } from '../store'
 import DeleteDialog from './DeleteDialog'
@@ -225,7 +225,10 @@ function compareTasks(a: TaskItem, b: TaskItem, sortState: SortState): number {
 
 export default function TodoList() {
   const user = useSelector((s: RootState) => s.auth.user)
+  const tasksRefreshToken = useSelector((s: RootState) => s.notifications.tasksRefreshToken)
   const isAdmin = user?.role === 'Admin'
+  const isProjectManager = user?.role === 'ProjectManager'
+  const canAssign = isProjectManager
 
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [searchInput, setSearchInput] = useState('')
@@ -236,10 +239,14 @@ export default function TodoList() {
   const [projectsLoading, setProjectsLoading] = useState(true)
   const [newTaskProjectId, setNewTaskProjectId] = useState<number | ''>('')
   const [assignableUsers, setAssignableUsers] = useState<UserDto[]>([])
+  const [projectAssignableUsers, setProjectAssignableUsers] = useState<Record<number, UserDto[]>>({})
+  const [assignableLoadingByProject, setAssignableLoadingByProject] = useState<Record<number, boolean>>({})
+  const assignableLoadStarted = useRef(new Set<number>())
   const [newTaskName, setNewTaskName] = useState('')
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus | ''>('')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -253,6 +260,13 @@ export default function TodoList() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(10)
   const taskFormRef = useRef<HTMLFormElement>(null)
+  const taskQueryRef = useRef({
+    searchQuery: '',
+    statusFilter: '' as TaskStatus | '',
+    projectFilter: '' as number | '',
+  })
+
+  taskQueryRef.current = { searchQuery, statusFilter, projectFilter }
 
   const isEditing = editingId !== null
   const isCreating = actionLoading?.type === 'create'
@@ -298,6 +312,39 @@ export default function TodoList() {
   }, [searchQuery, statusFilter, projectFilter])
 
   useEffect(() => {
+    if (tasksRefreshToken === 0) return
+
+    let cancelled = false
+
+    async function refreshTasksFromNotification() {
+      const query = taskQueryRef.current
+      setRefreshing(true)
+      try {
+        const data = await getTodos({
+          search: query.searchQuery || undefined,
+          status: query.statusFilter || undefined,
+          projectId: query.projectFilter || undefined,
+        })
+        if (!cancelled) {
+          setTasks(data)
+        }
+      } catch {
+        // Keep existing table data if background refresh fails.
+      } finally {
+        if (!cancelled) {
+          setRefreshing(false)
+        }
+      }
+    }
+
+    void refreshTasksFromNotification()
+
+    return () => {
+      cancelled = true
+    }
+  }, [tasksRefreshToken])
+
+  useEffect(() => {
     setProjectsLoading(true)
     getProjects()
       .then((data) => {
@@ -320,6 +367,57 @@ export default function TodoList() {
         // assign UI optional if fetch fails
       })
   }, [isAdmin])
+
+  useEffect(() => {
+    if (!isProjectManager) {
+      assignableLoadStarted.current.clear()
+      setProjectAssignableUsers({})
+      setAssignableLoadingByProject({})
+      return
+    }
+
+    if (projects.length === 0) {
+      return
+    }
+
+    projects.forEach((project) => {
+      void ensureAssignableLoaded(project.id)
+    })
+  }, [isProjectManager, projects])
+
+  useEffect(() => {
+    if (!isProjectManager || tasks.length === 0) {
+      return
+    }
+
+    const projectIds = new Set(tasks.map((task) => Number(task.projectId)))
+    if (projectFilter !== '') {
+      projectIds.add(Number(projectFilter))
+    }
+
+    projectIds.forEach((projectId) => {
+      void ensureAssignableLoaded(projectId)
+    })
+  }, [isProjectManager, tasks, projectFilter])
+
+  async function ensureAssignableLoaded(projectId: number) {
+    const id = Number(projectId)
+    if (!Number.isFinite(id) || id <= 0 || assignableLoadStarted.current.has(id)) {
+      return
+    }
+
+    assignableLoadStarted.current.add(id)
+    setAssignableLoadingByProject((current) => ({ ...current, [id]: true }))
+
+    try {
+      const users = await getProjectAssignableUsers(id)
+      setProjectAssignableUsers((current) => ({ ...current, [id]: users }))
+    } catch {
+      setProjectAssignableUsers((current) => ({ ...current, [id]: [] }))
+    } finally {
+      setAssignableLoadingByProject((current) => ({ ...current, [id]: false }))
+    }
+  }
 
   useEffect(() => {
     if (!successMessage) {
@@ -536,7 +634,76 @@ export default function TodoList() {
 
   const emptyMessage = isAdmin
     ? 'No tasks yet. Add one above.'
-    : 'No tasks assigned to you yet.'
+    : isProjectManager
+      ? 'No tasks in your projects yet.'
+      : 'No tasks assigned to you yet.'
+
+  function usersForTask(projectId: number) {
+    return projectAssignableUsers[Number(projectId)] ?? []
+  }
+
+  function isAssignableLoading(projectId: number) {
+    return assignableLoadingByProject[Number(projectId)] ?? false
+  }
+
+  function AssignToSelect({
+    task,
+    isRowAssigning,
+    isRowDeleting,
+  }: {
+    task: TaskItem
+    isRowAssigning: boolean
+    isRowDeleting: boolean
+  }) {
+    const users = usersForTask(task.projectId)
+    const loadingUsers = isAssignableLoading(task.projectId)
+    const loaded = projectAssignableUsers[Number(task.projectId)] !== undefined
+
+    return (
+      <div className="relative w-full min-w-[9rem]">
+        <select
+          value={task.assignedToUserId ?? ''}
+          onChange={(e) => {
+            const userId = Number(e.target.value)
+            if (userId) handleAssign(task.id, userId)
+          }}
+          disabled={isRowDeleting || isRowAssigning || loadingUsers}
+          className={`${selectClass} ${loadingUsers ? 'border-blue-200 bg-blue-50/40' : ''}`}
+          aria-label={`Assign task ${task.id}`}
+          aria-busy={loadingUsers || isRowAssigning}
+        >
+          <option value="" disabled>
+            {loadingUsers ? 'Loading users...' : 'Select user...'}
+          </option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.firstName} {u.lastName}
+            </option>
+          ))}
+        </select>
+        {loadingUsers && (
+          <div
+            className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-white/70 backdrop-blur-[1px]"
+            aria-hidden="true"
+          >
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white px-2 py-0.5 text-xs font-medium text-blue-700 shadow-sm">
+              <Spinner size="sm" label="Loading users" />
+              Loading...
+            </span>
+          </div>
+        )}
+        {isRowAssigning && !loadingUsers && (
+          <p className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600">
+            <Spinner size="sm" label="Assigning task" />
+            Assigning...
+          </p>
+        )}
+        {loaded && !loadingUsers && users.length === 0 && (
+          <p className="mt-1 text-xs text-slate-500">No users available in this project.</p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto w-full max-w-7xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -786,8 +953,9 @@ export default function TodoList() {
               const value = event.target.value
               setNewTaskStatus(value === '' ? '' : (value as TaskStatus))
             }}
-            className={selectClass}
+            className={`${selectClass} ${isSavingEdit ? 'border-blue-200 bg-blue-50/40' : ''}`}
             disabled={isFormSubmitting}
+            aria-busy={isSavingEdit}
           >
             <option value="" disabled={isEditing}>
               Select status...
@@ -798,6 +966,12 @@ export default function TodoList() {
               </option>
             ))}
           </select>
+          {isSavingEdit && (
+            <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-blue-600">
+              <Spinner size="sm" label="Saving task status" />
+              Saving changes...
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -850,6 +1024,19 @@ export default function TodoList() {
           <p className="text-sm text-slate-500">Loading tasks...</p>
         </div>
       ) : (
+        <div className="relative">
+          {refreshing && (
+            <div
+              className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center rounded-xl bg-white/60 pt-8 backdrop-blur-[1px] md:pt-10"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm">
+                <Spinner size="sm" label="Refreshing tasks" />
+                Updating tasks...
+              </span>
+            </div>
+          )}
         <>
           <div className="space-y-3 md:hidden">
             {tasks.length === 0 ? (
@@ -891,35 +1078,16 @@ export default function TodoList() {
                       Updated: {formatDate(task.updatedAt)}
                     </p>
 
-                    {isAdmin && (
+                    {canAssign && (
                       <div className="mt-3">
                         <label className="mb-1 block text-xs font-medium text-slate-500">
                           Assign to
                         </label>
-                        <select
-                          value={task.assignedToUserId ?? ''}
-                          onChange={(e) => {
-                            const userId = Number(e.target.value)
-                            if (userId) handleAssign(task.id, userId)
-                          }}
-                          disabled={isRowDeleting || isRowAssigning}
-                          className={selectClass}
-                        >
-                          <option value="" disabled>
-                            Select user...
-                          </option>
-                          {assignableUsers.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.firstName} {u.lastName}
-                            </option>
-                          ))}
-                        </select>
-                        {isRowAssigning && (
-                          <span className="mt-1 inline-flex items-center gap-1 text-xs text-slate-500">
-                            <Spinner size="sm" label="Assigning task" />
-                            Assigning...
-                          </span>
-                        )}
+                        <AssignToSelect
+                          task={task}
+                          isRowAssigning={isRowAssigning}
+                          isRowDeleting={isRowDeleting}
+                        />
                       </div>
                     )}
 
@@ -1013,7 +1181,7 @@ export default function TodoList() {
                     onSort={handleSort}
                     className="hidden w-[11rem] whitespace-nowrap px-3 py-3 xl:table-cell sm:px-4"
                   />
-                  {isAdmin && (
+                  {canAssign && (
                     <th className="hidden w-[10rem] whitespace-nowrap px-3 py-3 lg:table-cell sm:px-4">
                       Assign to
                     </th>
@@ -1027,7 +1195,7 @@ export default function TodoList() {
                 {tasks.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={isAdmin ? 9 : 8}
+                      colSpan={canAssign ? 9 : 8}
                       className="px-4 py-12 text-center text-slate-500"
                     >
                       {emptyMessage}
@@ -1084,30 +1252,13 @@ export default function TodoList() {
                           {formatDate(task.updatedAt)}
                         </td>
 
-                        {isAdmin && (
+                        {canAssign && (
                           <td className="hidden px-3 py-3 lg:table-cell sm:px-4">
-                            <select
-                              value={task.assignedToUserId ?? ''}
-                              onChange={(e) => {
-                                const userId = Number(e.target.value)
-                                if (userId) handleAssign(task.id, userId)
-                              }}
-                              disabled={isRowDeleting || isRowAssigning}
-                              className={`${selectClass} max-w-[9rem]`}
-                              aria-label={`Assign task ${task.id}`}
-                            >
-                              <option value="" disabled>
-                                Select...
-                              </option>
-                              {assignableUsers.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.firstName} {u.lastName}
-                                </option>
-                              ))}
-                            </select>
-                            {isRowAssigning && (
-                              <Spinner size="sm" label="Assigning task" />
-                            )}
+                            <AssignToSelect
+                              task={task}
+                              isRowAssigning={isRowAssigning}
+                              isRowDeleting={isRowDeleting}
+                            />
                           </td>
                         )}
 
@@ -1158,6 +1309,7 @@ export default function TodoList() {
             )}
           </div>
         </>
+        </div>
       )}
 
       {isAdmin && (

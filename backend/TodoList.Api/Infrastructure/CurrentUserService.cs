@@ -33,4 +33,19 @@ public class CurrentUserService : ICurrentUserService
     public bool IsAuthenticated => UserId.HasValue;
 
     public bool IsAdmin => Role == UserRole.Admin;
+
+    public bool IsProjectManager => Role == UserRole.ProjectManager;
+
+    public string? FullName
+    {
+        get
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            if (user is null) return null;
+            var first = user.FindFirstValue(ClaimTypes.GivenName)?.Trim();
+            var last = user.FindFirstValue(ClaimTypes.Surname)?.Trim();
+            var name = $"{first} {last}".Trim();
+            return string.IsNullOrWhiteSpace(name) ? null : name;
+        }
+    }
 }

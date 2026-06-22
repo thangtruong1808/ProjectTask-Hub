@@ -8,4 +8,5 @@ public interface IProjectService
     Task<IReadOnlyList<ProjectMemberItem>> GetMembersAsync(long projectId, CancellationToken cancellationToken = default);
     Task<bool> AssignMemberAsync(long projectId, long userId, CancellationToken cancellationToken = default);
     Task<bool> RemoveMemberAsync(long projectId, long userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserDto>> GetAssignableUsersForProjectAsync(long projectId, CancellationToken cancellationToken = default);
 }

@@ -35,7 +35,9 @@ public class AuthService : IAuthService
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
             Phone = request.Phone?.Trim(),
-            Role = request.Role is UserRole.Admin ? UserRole.Admin : UserRole.User,
+            Role = request.Role is UserRole.Admin or UserRole.ProjectManager
+                ? request.Role
+                : UserRole.User,
             IsActive = true,
             CreatedAt = now,
             UpdatedAt = now
