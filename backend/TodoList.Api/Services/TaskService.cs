@@ -1,50 +1,78 @@
+using TodoList.Api.Hubs;
+using TodoList.Api.Infrastructure;
 using TodoList.Api.Models;
 using TodoList.Api.Repositories;
+using Microsoft.AspNetCore.SignalR;
 
 namespace TodoList.Api.Services;
 
 public class TaskService : ITaskService
 {
     private readonly ITaskRepository _taskRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly INotificationRepository _notificationRepository;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IHubContext<NotificationHub> _hubContext;
     private readonly ILogger<TaskService> _logger;
 
-    public TaskService(ITaskRepository taskRepository, ILogger<TaskService> logger)
+    public TaskService(
+        ITaskRepository taskRepository,
+        IUserRepository userRepository,
+        INotificationRepository notificationRepository,
+        ICurrentUserService currentUser,
+        IHubContext<NotificationHub> hubContext,
+        ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository;
+        _userRepository = userRepository;
+        _notificationRepository = notificationRepository;
+        _currentUser = currentUser;
+        _hubContext = hubContext;
         _logger = logger;
     }
-    // Get all tasks
-    public async Task<IReadOnlyList<TaskItem>> GetAllAsync(CancellationToken cancellationToken = default)
+
+    public async Task<IReadOnlyList<TaskItem>> GetAllAsync(TaskQueryParams query, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("[Service] GetAllAsync -> TaskRepository.GetAllAsync");
-        var tasks = await _taskRepository.GetAllAsync(cancellationToken);
-        _logger.LogInformation("[Service] GetAllAsync completed. Count: {Count}", tasks.Count);
-        return tasks;
+        var status = query.Status.HasValue ? (int?)query.Status.Value : null;
+        var search = string.IsNullOrWhiteSpace(query.Search) ? null : query.Search.Trim();
+
+        if (_currentUser.IsAdmin)
+        {
+            return await _taskRepository.GetAllForAdminAsync(search, status, cancellationToken);
+        }
+
+        if (!_currentUser.UserId.HasValue)
+        {
+            return [];
+        }
+
+        return await _taskRepository.GetAllForUserAsync(_currentUser.UserId.Value, search, status, cancellationToken);
     }
 
-    // Get a task by id
     public async Task<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("[Service] GetByIdAsync({TaskId}) -> TaskRepository.GetByIdAsync", id);
         var task = await _taskRepository.GetByIdAsync(id, cancellationToken);
-        _logger.LogInformation(
-            "[Service] GetByIdAsync({TaskId}) completed. Found: {Found}",
-            id,
-            task is not null);
-        return task;
+        if (task is null || CanAccessTask(task))
+        {
+            return task;
+        }
+
+        return null;
     }
 
-    // Create a new task
     public async Task<TaskItem> CreateAsync(CreateTaskRequest request, CancellationToken cancellationToken = default)
     {
+        if (!_currentUser.IsAdmin)
+        {
+            throw new UnauthorizedAccessException("Only admins can create tasks.");
+        }
+
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            _logger.LogWarning("[Service] CreateAsync rejected: task name is required");
             throw new ArgumentException("Task name is required.", nameof(request));
         }
 
         var now = DateTime.UtcNow;
-
         var task = new TaskItem
         {
             Name = request.Name.Trim(),
@@ -54,66 +82,108 @@ public class TaskService : ITaskService
             UpdatedAt = now
         };
 
-        _logger.LogInformation(
-            "[Service] CreateAsync -> TaskRepository.CreateAsync (Name: {Name}, Status: {Status})",
-            task.Name,
-            task.Status);
-
-        var created = await _taskRepository.CreateAsync(task, cancellationToken);
-        _logger.LogInformation("[Service] CreateAsync completed. TaskId: {TaskId}", created.Id);
-        return created;
+        return await _taskRepository.CreateAsync(task, cancellationToken);
     }
-    
-    // Update a task
+
     public async Task<bool> UpdateAsync(long id, UpdateTaskRequest request, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            _logger.LogWarning("[Service] UpdateAsync({TaskId}) rejected: task name is required", id);
             throw new ArgumentException("Task name is required.", nameof(request));
         }
 
-        _logger.LogInformation("[Service] UpdateAsync({TaskId}) -> TaskRepository.GetByIdAsync", id);
-        var existingTask = await _taskRepository.GetByIdAsync(id, cancellationToken);
-        if (existingTask is null)
+        var existing = await _taskRepository.GetByIdAsync(id, cancellationToken);
+        if (existing is null || !CanAccessTask(existing))
         {
-            _logger.LogWarning("[Service] UpdateAsync({TaskId}) -> task not found", id);
             return false;
         }
 
-        existingTask.Name = request.Name.Trim();
-        existingTask.Description = request.Description?.Trim();
-        existingTask.Status = request.Status;
-        existingTask.UpdatedAt = DateTime.UtcNow;
+        existing.Name = request.Name.Trim();
+        existing.Description = request.Description?.Trim();
+        existing.Status = request.Status;
+        existing.UpdatedAt = DateTime.UtcNow;
 
-        _logger.LogInformation("[Service] UpdateAsync({TaskId}) -> TaskRepository.UpdateAsync", id);
-        var updated = await _taskRepository.UpdateAsync(existingTask, cancellationToken);
-        _logger.LogInformation("[Service] UpdateAsync({TaskId}) completed. Updated: {Updated}", id, updated);
-        return updated;
+        return await _taskRepository.UpdateAsync(existing, cancellationToken);
     }
 
-    // Update a task status
-    public async Task<bool> UpdateStatusAsync(
-        long id,
-        UpdateTaskStatusRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateStatusAsync(long id, UpdateTaskStatusRequest request, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "[Service] UpdateStatusAsync({TaskId}, Status: {Status}) -> TaskRepository.UpdateStatusAsync",
-            id,
-            request.Status);
+        var existing = await _taskRepository.GetByIdAsync(id, cancellationToken);
+        if (existing is null || !CanAccessTask(existing))
+        {
+            return false;
+        }
 
-        var updated = await _taskRepository.UpdateStatusAsync(id, request.Status, DateTime.UtcNow, cancellationToken);
-        _logger.LogInformation("[Service] UpdateStatusAsync({TaskId}) completed. Updated: {Updated}", id, updated);
-        return updated;
+        return await _taskRepository.UpdateStatusAsync(id, request.Status, DateTime.UtcNow, cancellationToken);
     }
 
-    // Delete a task
+    public async Task<bool> AssignAsync(long id, AssignTaskRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!_currentUser.IsAdmin || !_currentUser.UserId.HasValue)
+        {
+            throw new UnauthorizedAccessException("Only admins can assign tasks.");
+        }
+
+        var task = await _taskRepository.GetByIdAsync(id, cancellationToken);
+        if (task is null)
+        {
+            return false;
+        }
+
+        var assignee = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+        if (assignee is null || !assignee.IsActive || assignee.Role != UserRole.User)
+        {
+            throw new ArgumentException("Invalid assignee user.");
+        }
+
+        var now = DateTime.UtcNow;
+        var assigned = await _taskRepository.AssignAsync(id, request.UserId, _currentUser.UserId.Value, now, now, cancellationToken);
+        if (!assigned)
+        {
+            return false;
+        }
+
+        var notification = await _notificationRepository.CreateAsync(new NotificationItem
+        {
+            UserId = request.UserId,
+            Type = "TaskAssigned",
+            Title = "New task assigned",
+            Message = $"You have been assigned task: {task.Name}",
+            TaskId = id,
+            IsRead = false,
+            CreatedAt = now
+        }, cancellationToken);
+
+        await _hubContext.Clients.User(request.UserId.ToString()).SendAsync("TaskAssigned", new
+        {
+            notificationId = notification.Id,
+            taskId = id,
+            taskName = task.Name,
+            message = notification.Message,
+            createdAt = notification.CreatedAt
+        }, cancellationToken);
+
+        return true;
+    }
+
     public async Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("[Service] DeleteAsync({TaskId}) -> TaskRepository.DeleteAsync", id);
-        var deleted = await _taskRepository.DeleteAsync(id, cancellationToken);
-        _logger.LogInformation("[Service] DeleteAsync({TaskId}) completed. Deleted: {Deleted}", id, deleted);
-        return deleted;
+        var existing = await _taskRepository.GetByIdAsync(id, cancellationToken);
+        if (existing is null || !CanAccessTask(existing))
+        {
+            return false;
+        }
+
+        return await _taskRepository.DeleteAsync(id, cancellationToken);
+    }
+
+    private bool CanAccessTask(TaskItem task)
+    {
+        if (_currentUser.IsAdmin)
+        {
+            return true;
+        }
+
+        return _currentUser.UserId.HasValue && task.AssignedToUserId == _currentUser.UserId.Value;
     }
 }

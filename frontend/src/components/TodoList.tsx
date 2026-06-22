@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useSelector } from 'react-redux'
 import {
+  assignTodo,
   createTodo,
   deleteTodo,
   getTodos,
@@ -8,10 +10,23 @@ import {
   type TaskItem,
   type TaskStatus,
 } from '../api/todos'
+import { getAssignableUsers } from '../api/users'
+import type { UserDto } from '../api/client'
+import type { RootState } from '../store'
 import DeleteDialog from './DeleteDialog'
+import { CharacterCount, FieldError, fieldErrorClass } from './FormFieldHelpers'
 import InlineMessage from './InlineMessage'
 import Spinner from './Spinner'
 import TablePagination from './TablePagination'
+import {
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_NAME_MAX_LENGTH,
+  hasFormErrors,
+  validateTaskDescription,
+  validateTaskForm,
+  validateTaskName,
+  type TaskFormErrors,
+} from '../utils/taskValidation'
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   Pending: 'Pending',
@@ -31,6 +46,7 @@ type ActionLoading =
   | { type: 'create' }
   | { type: 'edit'; id: number }
   | { type: 'delete'; id: number }
+  | { type: 'assign'; id: number }
   | null
 
 interface DeleteTarget {
@@ -206,7 +222,14 @@ function compareTasks(a: TaskItem, b: TaskItem, sortState: SortState): number {
 }
 
 export default function TodoList() {
+  const user = useSelector((s: RootState) => s.auth.user)
+  const isAdmin = user?.role === 'Admin'
+
   const [tasks, setTasks] = useState<TaskItem[]>([])
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('')
+  const [assignableUsers, setAssignableUsers] = useState<UserDto[]>([])
   const [newTaskName, setNewTaskName] = useState('')
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus | ''>('')
@@ -214,7 +237,7 @@ export default function TodoList() {
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [nameError, setNameError] = useState(false)
+  const [formErrors, setFormErrors] = useState<TaskFormErrors>({})
   const [actionLoading, setActionLoading] = useState<ActionLoading>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [sortState, setSortState] = useState<SortState>({
@@ -253,8 +276,24 @@ export default function TodoList() {
   }, [currentPage, totalPages])
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearchQuery(searchInput.trim())
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [searchInput])
+
+  useEffect(() => {
     loadTasks()
-  }, [])
+  }, [searchQuery, statusFilter])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    getAssignableUsers()
+      .then(setAssignableUsers)
+      .catch(() => {
+        // assign UI optional if fetch fails
+      })
+  }, [isAdmin])
 
   useEffect(() => {
     if (!successMessage) {
@@ -273,19 +312,49 @@ export default function TodoList() {
     setNewTaskName('')
     setNewTaskDescription('')
     setNewTaskStatus('')
-    setNameError(false)
+    setFormErrors({})
+  }
+
+  function clearFieldError(field: keyof TaskFormErrors) {
+    setFormErrors((current) => {
+      if (!current[field]) {
+        return current
+      }
+
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
   }
 
   async function loadTasks() {
     try {
       setLoading(true)
       setError(null)
-      const data = await getTodos()
+      const data = await getTodos({
+        search: searchQuery || undefined,
+        status: statusFilter || undefined,
+      })
       setTasks(data)
     } catch {
       setError('Could not load tasks. Check that the API is running.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleAssign(taskId: number, userId: number) {
+    try {
+      setActionLoading({ type: 'assign', id: taskId })
+      setError(null)
+      await assignTodo(taskId, userId)
+      await loadTasks()
+      showSuccess('Task assigned successfully.')
+    } catch {
+      setError('Could not assign task.')
+      setSuccessMessage(null)
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -297,11 +366,19 @@ export default function TodoList() {
   async function handleSubmitTask(event: FormEvent) {
     event.preventDefault()
 
-    const name = newTaskName.trim()
-    if (!name) {
-      setNameError(true)
+    const errors = validateTaskForm({
+      name: newTaskName,
+      description: newTaskDescription,
+    })
+
+    if (hasFormErrors(errors)) {
+      setFormErrors(errors)
       return
     }
+
+    const name = newTaskName.trim()
+    const description = newTaskDescription.trim() || null
+    setFormErrors({})
 
     if (isEditing) {
       const id = editingId
@@ -311,7 +388,7 @@ export default function TodoList() {
         setError(null)
         await updateTodo(id, {
           name,
-          description: newTaskDescription.trim() || null,
+          description,
           status: newTaskStatus as TaskStatus,
         })
         setTasks((current) =>
@@ -320,7 +397,7 @@ export default function TodoList() {
               ? {
                   ...item,
                   name,
-                  description: newTaskDescription.trim() || null,
+                  description,
                   status: newTaskStatus as TaskStatus,
                   updatedAt: new Date().toISOString(),
                 }
@@ -344,7 +421,7 @@ export default function TodoList() {
       setError(null)
       const created = await createTodo({
         name,
-        description: newTaskDescription.trim() || null,
+        description,
         status: newTaskStatus || undefined,
       })
       setTasks((current) => [created, ...current])
@@ -363,7 +440,7 @@ export default function TodoList() {
     setNewTaskName(task.name)
     setNewTaskDescription(task.description ?? '')
     setNewTaskStatus(task.status)
-    setNameError(false)
+    setFormErrors({})
     setError(null)
 
     window.requestAnimationFrame(() => {
@@ -423,10 +500,56 @@ export default function TodoList() {
     }
   }
 
+  const emptyMessage = isAdmin
+    ? 'No tasks yet. Add one above.'
+    : 'No tasks assigned to you yet.'
+
   return (
     <div className="mx-auto w-full max-w-7xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
       <h1 className="mb-6 text-2xl font-semibold text-slate-900">Task List</h1>
 
+      <div className="mb-6 flex flex-wrap items-end gap-3">
+        <div className="min-w-[12rem] flex-1">
+          <label htmlFor="task-search" className="mb-1 block text-sm font-medium text-slate-600">
+            Search
+          </label>
+          <input
+            id="task-search"
+            type="search"
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value)
+              setCurrentPage(1)
+            }}
+            placeholder="Search by task name..."
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          />
+        </div>
+        <div className="w-44">
+          <label htmlFor="status-filter" className="mb-1 block text-sm font-medium text-slate-600">
+            Status
+          </label>
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => {
+              const value = e.target.value
+              setStatusFilter(value === '' ? '' : (value as TaskStatus))
+              setCurrentPage(1)
+            }}
+            className={selectClass}
+          >
+            <option value="">All statuses</option>
+            {TASK_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {STATUS_LABELS[status]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {(isAdmin || isEditing) && (
       <form
         ref={taskFormRef}
         onSubmit={handleSubmitTask}
@@ -441,29 +564,103 @@ export default function TodoList() {
           </div>
         )}
 
-        <input
-          type="text"
-          value={newTaskName}
-          onChange={(event) => {
-            setNewTaskName(event.target.value)
-            setNameError(false)
-          }}
-          placeholder="Task name"
-          className={`w-full rounded-lg border px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 ${nameError ? 'border-red-400 focus:border-red-500 focus:ring-red-200' : 'border-slate-300 focus:border-blue-500'}`}
-          disabled={isFormSubmitting}
-        />
-        {nameError && (
-          <p className="text-xs text-red-600">Task name is required.</p>
-        )}
+        <div>
+          <label
+            htmlFor="task-name"
+            className="mb-1 block text-sm font-medium text-slate-600"
+          >
+            Task name <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="task-name"
+            type="text"
+            value={newTaskName}
+            onChange={(event) => {
+              setNewTaskName(event.target.value)
+              clearFieldError('name')
+            }}
+            onBlur={() => {
+              const nameError = validateTaskName(newTaskName)
+              setFormErrors((current) => {
+                const next = { ...current }
+                if (nameError) {
+                  next.name = nameError
+                } else {
+                  delete next.name
+                }
+                return next
+              })
+            }}
+            placeholder="Enter task name"
+            maxLength={TASK_NAME_MAX_LENGTH}
+            aria-invalid={Boolean(formErrors.name)}
+            aria-describedby={
+              [formErrors.name ? 'task-name-error' : null, 'task-name-count']
+                .filter(Boolean)
+                .join(' ') || undefined
+            }
+            className={`w-full rounded-lg border px-3 py-2 text-slate-900 outline-none focus:ring-2 ${fieldErrorClass(Boolean(formErrors.name))}`}
+            disabled={isFormSubmitting}
+          />
+          <FieldError id="task-name-error" message={formErrors.name} />
+          <CharacterCount
+            id="task-name-count"
+            current={newTaskName.trim().length}
+            max={TASK_NAME_MAX_LENGTH}
+          />
+        </div>
 
-        <textarea
-          value={newTaskDescription}
-          onChange={(event) => setNewTaskDescription(event.target.value)}
-          placeholder="Description (optional)"
-          rows={3}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-          disabled={isFormSubmitting}
-        />
+        <div>
+          <label
+            htmlFor="task-description"
+            className="mb-1 block text-sm font-medium text-slate-600"
+          >
+            Description <span className="text-slate-400">(optional)</span>
+          </label>
+          <textarea
+            id="task-description"
+            value={newTaskDescription}
+            onChange={(event) => {
+              setNewTaskDescription(event.target.value)
+              clearFieldError('description')
+            }}
+            onBlur={() => {
+              const descriptionError = validateTaskDescription(newTaskDescription)
+              setFormErrors((current) => {
+                const next = { ...current }
+                if (descriptionError) {
+                  next.description = descriptionError
+                } else {
+                  delete next.description
+                }
+                return next
+              })
+            }}
+            placeholder="Enter task description"
+            rows={3}
+            maxLength={TASK_DESCRIPTION_MAX_LENGTH}
+            aria-invalid={Boolean(formErrors.description)}
+            aria-describedby={
+              [
+                formErrors.description ? 'task-description-error' : null,
+                'task-description-count',
+              ]
+                .filter(Boolean)
+                .join(' ') || undefined
+            }
+            className={`w-full rounded-lg border px-3 py-2 text-slate-900 outline-none focus:ring-2 ${fieldErrorClass(Boolean(formErrors.description))}`}
+            disabled={isFormSubmitting}
+          />
+          <FieldError
+            id="task-description-error"
+            message={formErrors.description}
+          />
+          <CharacterCount
+            id="task-description-count"
+            current={newTaskDescription.trim().length}
+            max={TASK_DESCRIPTION_MAX_LENGTH}
+          />
+        </div>
         <div>
           <label
             htmlFor="task-status"
@@ -518,6 +715,7 @@ export default function TodoList() {
           )}
         </div>
       </form>
+      )}
 
       {successMessage && (
         <InlineMessage
@@ -545,13 +743,16 @@ export default function TodoList() {
           <div className="space-y-3 md:hidden">
             {tasks.length === 0 ? (
               <p className="rounded-xl border border-slate-200 px-4 py-12 text-center text-slate-500">
-                No tasks yet. Add one above.
+                {emptyMessage}
               </p>
             ) : (
               paginatedTasks.map((task, index) => {
                 const isSelected = editingId === task.id
                 const isRowDeleting =
                   actionLoading?.type === 'delete' &&
+                  actionLoading.id === task.id
+                const isRowAssigning =
+                  actionLoading?.type === 'assign' &&
                   actionLoading.id === task.id
                 const sequenceNumber = (currentPage - 1) * pageSize + index + 1
 
@@ -578,6 +779,38 @@ export default function TodoList() {
                     <p className="text-xs text-slate-500">
                       Updated: {formatDate(task.updatedAt)}
                     </p>
+
+                    {isAdmin && (
+                      <div className="mt-3">
+                        <label className="mb-1 block text-xs font-medium text-slate-500">
+                          Assign to
+                        </label>
+                        <select
+                          value={task.assignedToUserId ?? ''}
+                          onChange={(e) => {
+                            const userId = Number(e.target.value)
+                            if (userId) handleAssign(task.id, userId)
+                          }}
+                          disabled={isRowDeleting || isRowAssigning}
+                          className={selectClass}
+                        >
+                          <option value="" disabled>
+                            Select user...
+                          </option>
+                          {assignableUsers.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.firstName} {u.lastName}
+                            </option>
+                          ))}
+                        </select>
+                        {isRowAssigning && (
+                          <span className="mt-1 inline-flex items-center gap-1 text-xs text-slate-500">
+                            <Spinner size="sm" label="Assigning task" />
+                            Assigning...
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
@@ -667,6 +900,11 @@ export default function TodoList() {
                     onSort={handleSort}
                     className="hidden w-[11rem] whitespace-nowrap px-3 py-3 xl:table-cell sm:px-4"
                   />
+                  {isAdmin && (
+                    <th className="hidden w-[10rem] whitespace-nowrap px-3 py-3 lg:table-cell sm:px-4">
+                      Assign to
+                    </th>
+                  )}
                   <th className="w-[9.5rem] whitespace-nowrap px-3 py-3 text-right sm:px-4">
                     Actions
                   </th>
@@ -676,10 +914,10 @@ export default function TodoList() {
                 {tasks.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={isAdmin ? 9 : 8}
                       className="px-4 py-12 text-center text-slate-500"
                     >
-                      No tasks yet. Add one above.
+                      {emptyMessage}
                     </td>
                   </tr>
                 ) : (
@@ -687,6 +925,9 @@ export default function TodoList() {
                     const isSelected = editingId === task.id
                     const isRowDeleting =
                       actionLoading?.type === 'delete' &&
+                      actionLoading.id === task.id
+                    const isRowAssigning =
+                      actionLoading?.type === 'assign' &&
                       actionLoading.id === task.id
                     const sequenceNumber = (currentPage - 1) * pageSize + index + 1
 
@@ -729,6 +970,33 @@ export default function TodoList() {
                         <td className="hidden px-3 py-3 text-xs text-slate-500 xl:table-cell sm:px-4">
                           {formatDate(task.updatedAt)}
                         </td>
+
+                        {isAdmin && (
+                          <td className="hidden px-3 py-3 lg:table-cell sm:px-4">
+                            <select
+                              value={task.assignedToUserId ?? ''}
+                              onChange={(e) => {
+                                const userId = Number(e.target.value)
+                                if (userId) handleAssign(task.id, userId)
+                              }}
+                              disabled={isRowDeleting || isRowAssigning}
+                              className={`${selectClass} max-w-[9rem]`}
+                              aria-label={`Assign task ${task.id}`}
+                            >
+                              <option value="" disabled>
+                                Select...
+                              </option>
+                              {assignableUsers.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.firstName} {u.lastName}
+                                </option>
+                              ))}
+                            </select>
+                            {isRowAssigning && (
+                              <Spinner size="sm" label="Assigning task" />
+                            )}
+                          </td>
+                        )}
 
                         <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                           <div className="flex items-center justify-end gap-2">

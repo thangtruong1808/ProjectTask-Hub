@@ -4,16 +4,11 @@ namespace TodoList.Api.Services;
 
 public interface ITaskService
 {
-    // Get all tasks    
-    Task<IReadOnlyList<TaskItem>> GetAllAsync(CancellationToken cancellationToken = default);
-    // Get a task by id
+    Task<IReadOnlyList<TaskItem>> GetAllAsync(TaskQueryParams query, CancellationToken cancellationToken = default);
     Task<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
-    // Create a new task
     Task<TaskItem> CreateAsync(CreateTaskRequest request, CancellationToken cancellationToken = default);
-    // Update a task
     Task<bool> UpdateAsync(long id, UpdateTaskRequest request, CancellationToken cancellationToken = default);
-    // Update a task status
     Task<bool> UpdateStatusAsync(long id, UpdateTaskStatusRequest request, CancellationToken cancellationToken = default);
-    // Delete a task
+    Task<bool> AssignAsync(long id, AssignTaskRequest request, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
 }

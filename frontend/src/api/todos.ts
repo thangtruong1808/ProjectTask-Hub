@@ -1,3 +1,5 @@
+import { apiFetch } from './client'
+
 export type TaskStatus = 'Pending' | 'InProgress' | 'Completed' | 'Cancelled'
 
 export interface TaskItem {
@@ -7,6 +9,9 @@ export interface TaskItem {
   createdAt: string
   updatedAt: string
   status: TaskStatus
+  assignedToUserId: number | null
+  assignedByUserId: number | null
+  assignedAt: string | null
 }
 
 export interface CreateTaskPayload {
@@ -21,7 +26,10 @@ export interface UpdateTaskPayload {
   status: TaskStatus
 }
 
-const API_URL = import.meta.env.VITE_API_URL
+export interface TaskQuery {
+  search?: string
+  status?: TaskStatus | ''
+}
 
 const TASK_STATUSES: TaskStatus[] = [
   'Pending',
@@ -34,65 +42,44 @@ export function isTaskStatus(value: string): value is TaskStatus {
   return TASK_STATUSES.includes(value as TaskStatus)
 }
 
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`)
-  }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return response.json() as Promise<T>
-}
-
-export async function getTodos(): Promise<TaskItem[]> {
-  const response = await fetch(`${API_URL}/todos`)
-  return handleResponse<TaskItem[]>(response)
+export async function getTodos(query: TaskQuery = {}): Promise<TaskItem[]> {
+  const params = new URLSearchParams()
+  if (query.search?.trim()) params.set('search', query.search.trim())
+  if (query.status) params.set('status', query.status)
+  const qs = params.toString()
+  return apiFetch<TaskItem[]>(`/todos${qs ? `?${qs}` : ''}`)
 }
 
 export async function createTodo(payload: CreateTaskPayload): Promise<TaskItem> {
-  const response = await fetch(`${API_URL}/todos`, {
+  return apiFetch<TaskItem>('/todos', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: payload.name,
       description: payload.description ?? null,
       status: payload.status ?? 'Pending',
     }),
   })
-  return handleResponse<TaskItem>(response)
 }
 
 export async function updateTodo(
   id: number,
   payload: UpdateTaskPayload,
 ): Promise<void> {
-  const response = await fetch(`${API_URL}/todos/${id}`, {
+  return apiFetch<void>(`/todos/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  return handleResponse<void>(response)
 }
 
-export async function updateTodoStatus(
-  id: number,
-  status: TaskStatus,
-): Promise<void> {
-  const response = await fetch(`${API_URL}/todos/${id}/status`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status }),
+export async function assignTodo(id: number, userId: number): Promise<void> {
+  return apiFetch<void>(`/todos/${id}/assign`, {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
   })
-  return handleResponse<void>(response)
 }
 
 export async function deleteTodo(id: number): Promise<void> {
-  const response = await fetch(`${API_URL}/todos/${id}`, {
-    method: 'DELETE',
-  })
-  return handleResponse<void>(response)
+  return apiFetch<void>(`/todos/${id}`, { method: 'DELETE' })
 }
 
 export { TASK_STATUSES }

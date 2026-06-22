@@ -4,16 +4,14 @@ namespace TodoList.Api.Repositories;
 
 public interface ITaskRepository
 {
-    // Get all tasks
-    Task<IReadOnlyList<TaskItem>> GetAllAsync(CancellationToken cancellationToken = default);
-    // Get a task by id
+    Task<IReadOnlyList<TaskItem>> GetAllForAdminAsync(string? search, int? status, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TaskItem>> GetAllForUserAsync(long userId, string? search, int? status, CancellationToken cancellationToken = default);
     Task<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
-    // Create a new task
     Task<TaskItem> CreateAsync(TaskItem task, CancellationToken cancellationToken = default);
-    // Update a task
     Task<bool> UpdateAsync(TaskItem task, CancellationToken cancellationToken = default);
-    // Update a task status
     Task<bool> UpdateStatusAsync(long id, Models.TaskStatus status, DateTime updatedAt, CancellationToken cancellationToken = default);
-    // Delete a task
+    Task<bool> AssignAsync(long id, long assignedToUserId, long assignedByUserId, DateTime assignedAt, DateTime updatedAt, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
+    Task<(int Total, int Pending, int InProgress, int Completed, int Cancelled)> GetStatusCountsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TaskItem>> GetRecentAssignmentsAsync(int limit, CancellationToken cancellationToken = default);
 }
