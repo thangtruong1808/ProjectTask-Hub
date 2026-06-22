@@ -23,7 +23,7 @@ public interface IUserService
 public interface INotificationService
 {
     Task<NotificationListResponse> GetNotificationsAsync(int limit, int offset, CancellationToken cancellationToken = default);
-    Task<bool> MarkReadAsync(long id, CancellationToken cancellationToken = default);
+    Task<NotificationItem?> MarkReadAsync(long id, CancellationToken cancellationToken = default);
     Task<bool> MarkAllReadAsync(CancellationToken cancellationToken = default);
 }
 

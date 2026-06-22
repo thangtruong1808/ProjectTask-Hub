@@ -9,5 +9,8 @@ public class NotificationItem
     public string Message { get; set; } = string.Empty;
     public long? TaskId { get; set; }
     public bool IsRead { get; set; }
+    public DateTime? ReadAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? ProjectName { get; set; }
+    public string? ProjectCode { get; set; }
 }

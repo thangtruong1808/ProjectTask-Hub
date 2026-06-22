@@ -11,11 +11,13 @@ import {
   type TaskStatus,
 } from '../api/todos'
 import { getAssignableUsers } from '../api/users'
+import { getProjects, type ProjectItem } from '../api/projects'
 import type { UserDto } from '../api/client'
 import type { RootState } from '../store'
 import DeleteDialog from './DeleteDialog'
 import { CharacterCount, FieldError, fieldErrorClass } from './FormFieldHelpers'
 import InlineMessage from './InlineMessage'
+import ProjectMembersPanel from './ProjectMembersPanel'
 import Spinner from './Spinner'
 import TablePagination from './TablePagination'
 import {
@@ -229,6 +231,10 @@ export default function TodoList() {
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('')
+  const [projectFilter, setProjectFilter] = useState<number | ''>('')
+  const [projects, setProjects] = useState<ProjectItem[]>([])
+  const [projectsLoading, setProjectsLoading] = useState(true)
+  const [newTaskProjectId, setNewTaskProjectId] = useState<number | ''>('')
   const [assignableUsers, setAssignableUsers] = useState<UserDto[]>([])
   const [newTaskName, setNewTaskName] = useState('')
   const [newTaskDescription, setNewTaskDescription] = useState('')
@@ -269,6 +275,11 @@ export default function TodoList() {
     return sortedTasks.slice(start, start + pageSize)
   }, [sortedTasks, currentPage, pageSize])
 
+  const selectedProject = useMemo(
+    () => (projectFilter === '' ? null : projects.find((p) => p.id === projectFilter) ?? null),
+    [projectFilter, projects],
+  )
+
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages)
@@ -284,7 +295,22 @@ export default function TodoList() {
 
   useEffect(() => {
     loadTasks()
-  }, [searchQuery, statusFilter])
+  }, [searchQuery, statusFilter, projectFilter])
+
+  useEffect(() => {
+    setProjectsLoading(true)
+    getProjects()
+      .then((data) => {
+        setProjects(data)
+        if (data.length > 0 && newTaskProjectId === '') {
+          setNewTaskProjectId(data[0].id)
+        }
+      })
+      .catch(() => {
+        // project filter optional if fetch fails
+      })
+      .finally(() => setProjectsLoading(false))
+  }, [])
 
   useEffect(() => {
     if (!isAdmin) return
@@ -312,6 +338,7 @@ export default function TodoList() {
     setNewTaskName('')
     setNewTaskDescription('')
     setNewTaskStatus('')
+    setNewTaskProjectId(projects[0]?.id ?? '')
     setFormErrors({})
   }
 
@@ -334,6 +361,7 @@ export default function TodoList() {
       const data = await getTodos({
         search: searchQuery || undefined,
         status: statusFilter || undefined,
+        projectId: projectFilter || undefined,
       })
       setTasks(data)
     } catch {
@@ -419,10 +447,16 @@ export default function TodoList() {
     try {
       setActionLoading({ type: 'create' })
       setError(null)
+      if (!newTaskProjectId) {
+        setError('Please select a project.')
+        setActionLoading(null)
+        return
+      }
       const created = await createTodo({
         name,
         description,
         status: newTaskStatus || undefined,
+        projectId: newTaskProjectId,
       })
       setTasks((current) => [created, ...current])
       resetTaskForm()
@@ -547,7 +581,56 @@ export default function TodoList() {
             ))}
           </select>
         </div>
+        <div className="w-52">
+          <label htmlFor="project-filter" className="mb-1 block text-sm font-medium text-slate-600">
+            Project
+          </label>
+          <div className="relative">
+            {projectsLoading && (
+              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
+                <Spinner size="sm" label="Loading projects" />
+              </span>
+            )}
+            {loading && !projectsLoading && (
+              <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2">
+                <Spinner size="sm" label="Loading tasks for project" />
+              </span>
+            )}
+            <select
+              id="project-filter"
+              value={projectFilter}
+              onChange={(e) => {
+                const value = e.target.value
+                setProjectFilter(value === '' ? '' : Number(value))
+                setCurrentPage(1)
+              }}
+              disabled={projectsLoading}
+              className={`${selectClass} ${projectsLoading || loading ? 'pr-14' : ''}`}
+            >
+              <option value="">All projects</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.code ? `${project.code} — ${project.name}` : project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
+
+      {isAdmin && projectFilter !== '' && selectedProject && (
+        <div className="mb-4">
+          <ProjectMembersPanel
+            projectId={projectFilter}
+            projectLabel={
+              selectedProject.code
+                ? `${selectedProject.code} — ${selectedProject.name}`
+                : selectedProject.name
+            }
+            assignableUsers={assignableUsers}
+          />
+        </div>
+      )}
 
       {(isAdmin || isEditing) && (
       <form
@@ -561,6 +644,34 @@ export default function TodoList() {
               Editing Task #{editingId}
             </p>
             <StatusBadge status={newTaskStatus as TaskStatus} />
+          </div>
+        )}
+
+        {isAdmin && !isEditing && (
+          <div>
+            <label htmlFor="task-project" className="mb-1 block text-sm font-medium text-slate-600">
+              Project <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="task-project"
+              value={newTaskProjectId}
+              onChange={(e) => {
+                const value = e.target.value
+                setNewTaskProjectId(value === '' ? '' : Number(value))
+              }}
+              required
+              disabled={isFormSubmitting || projectsLoading}
+              className={selectClass}
+            >
+              <option value="" disabled>
+                Select project...
+              </option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.code ? `${project.code} — ${project.name}` : project.name}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -821,6 +932,7 @@ export default function TodoList() {
                       >
                         Edit
                       </button>
+                      {isAdmin && (
                       <button
                         type="button"
                         onClick={() => requestDelete(task.id, task.name)}
@@ -832,6 +944,7 @@ export default function TodoList() {
                         )}
                         Delete
                       </button>
+                      )}
                     </div>
                   </article>
                 )
@@ -1009,6 +1122,7 @@ export default function TodoList() {
                             >
                               Edit
                             </button>
+                            {isAdmin && (
                             <button
                               type="button"
                               onClick={() => requestDelete(task.id, task.name)}
@@ -1021,6 +1135,7 @@ export default function TodoList() {
                               )}
                               Delete
                             </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1045,6 +1160,7 @@ export default function TodoList() {
         </>
       )}
 
+      {isAdmin && (
       <DeleteDialog
         open={deleteTarget !== null}
         taskName={deleteTarget?.name ?? ''}
@@ -1056,6 +1172,7 @@ export default function TodoList() {
         }}
         isDeleting={isDeleting}
       />
+      )}
     </div>
   )
 }

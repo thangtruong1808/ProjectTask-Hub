@@ -74,7 +74,10 @@ export interface NotificationState {
     title: string
     message: string
     taskId: number | null
+    projectName: string | null
+    projectCode: string | null
     isRead: boolean
+    readAt: string | null
     createdAt: string
   }>
   unreadCount: number
@@ -106,6 +109,8 @@ const notificationSlice = createSlice({
         title: string
         message: string
         taskId: number | null
+        projectName?: string | null
+        projectCode?: string | null
         createdAt: string
       }>,
     ) {
@@ -115,23 +120,34 @@ const notificationSlice = createSlice({
           title: action.payload.title,
           message: action.payload.message,
           taskId: action.payload.taskId,
+          projectName: action.payload.projectName ?? null,
+          projectCode: action.payload.projectCode ?? null,
           isRead: false,
+          readAt: null,
           createdAt: action.payload.createdAt,
         },
         ...state.items,
       ].slice(0, 20)
       state.unreadCount += 1
     },
-    markRead(state, action: PayloadAction<number>) {
-      const item = state.items.find((n) => n.id === action.payload)
-      if (item && !item.isRead) {
+    markRead(state, action: PayloadAction<{ id: number; readAt: string | null }>) {
+      const item = state.items.find((n) => n.id === action.payload.id)
+      if (item) {
+        const wasUnread = !item.isRead
         item.isRead = true
-        state.unreadCount = Math.max(0, state.unreadCount - 1)
+        item.readAt = action.payload.readAt ?? item.readAt ?? new Date().toISOString()
+        if (wasUnread) {
+          state.unreadCount = Math.max(0, state.unreadCount - 1)
+        }
       }
     },
-    markAllRead(state) {
+    markAllRead(state, action: PayloadAction<string>) {
+      const readAt = action.payload
       state.items.forEach((n) => {
-        n.isRead = true
+        if (!n.isRead) {
+          n.isRead = true
+          n.readAt = readAt
+        }
       })
       state.unreadCount = 0
     },

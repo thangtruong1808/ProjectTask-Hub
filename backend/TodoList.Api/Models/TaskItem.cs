@@ -3,6 +3,8 @@ namespace TodoList.Api.Models;
 public class TaskItem
 {
     public long Id { get; set; }
+    public long ProjectId { get; set; }
+    public string? ProjectName { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }

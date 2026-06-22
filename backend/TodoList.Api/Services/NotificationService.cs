@@ -29,10 +29,13 @@ public class NotificationService : INotificationService
         return new NotificationListResponse { Items = items, UnreadCount = unread };
     }
 
-    public async Task<bool> MarkReadAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<NotificationItem?> MarkReadAsync(long id, CancellationToken cancellationToken = default)
     {
-        if (!_currentUser.UserId.HasValue) return false;
-        return await _notificationRepository.MarkReadAsync(id, _currentUser.UserId.Value, cancellationToken);
+        if (!_currentUser.UserId.HasValue) return null;
+
+        var userId = _currentUser.UserId.Value;
+        await _notificationRepository.MarkReadAsync(id, userId, cancellationToken);
+        return await _notificationRepository.GetByIdForUserAsync(id, userId, cancellationToken);
     }
 
     public async Task<bool> MarkAllReadAsync(CancellationToken cancellationToken = default)

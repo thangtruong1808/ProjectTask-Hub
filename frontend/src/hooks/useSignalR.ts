@@ -34,15 +34,20 @@ export function useSignalR() {
       notificationId: number
       taskId: number
       taskName: string
+      title?: string
       message: string
+      projectName?: string | null
+      projectCode?: string | null
       createdAt: string
     }) => {
       dispatch(
         addNotification({
           id: payload.notificationId,
-          title: 'New task assigned',
+          title: payload.title ?? payload.taskName,
           message: payload.message,
           taskId: payload.taskId,
+          projectName: payload.projectName ?? null,
+          projectCode: payload.projectCode ?? null,
           createdAt: payload.createdAt,
         }),
       )
@@ -71,7 +76,10 @@ export function useSignalR() {
               title: n.title,
               message: n.message,
               taskId: n.taskId,
+              projectName: n.projectName,
+              projectCode: n.projectCode,
               isRead: n.isRead,
+              readAt: n.readAt,
               createdAt: n.createdAt,
             })),
             unreadCount: data.unreadCount,

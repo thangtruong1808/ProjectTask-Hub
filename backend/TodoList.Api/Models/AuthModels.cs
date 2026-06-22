@@ -78,6 +78,7 @@ public class TaskQueryParams
 {
     public string? Search { get; set; }
     public Models.TaskStatus? Status { get; set; }
+    public long? ProjectId { get; set; }
 }
 
 public class DashboardStats

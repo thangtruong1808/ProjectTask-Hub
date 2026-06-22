@@ -4,8 +4,8 @@ namespace TodoList.Api.Repositories;
 
 public interface ITaskRepository
 {
-    Task<IReadOnlyList<TaskItem>> GetAllForAdminAsync(string? search, int? status, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<TaskItem>> GetAllForUserAsync(long userId, string? search, int? status, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TaskItem>> GetAllForAdminAsync(string? search, int? status, long? projectId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TaskItem>> GetAllForUserAsync(long userId, string? search, int? status, long? projectId, CancellationToken cancellationToken = default);
     Task<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
     Task<TaskItem> CreateAsync(TaskItem task, CancellationToken cancellationToken = default);
     Task<bool> UpdateAsync(TaskItem task, CancellationToken cancellationToken = default);

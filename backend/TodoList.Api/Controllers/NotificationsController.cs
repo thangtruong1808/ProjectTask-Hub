@@ -27,10 +27,10 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpPatch("{id:long}/read")]
-    public async Task<IActionResult> MarkRead(long id, CancellationToken cancellationToken)
+    public async Task<ActionResult<NotificationItem>> MarkRead(long id, CancellationToken cancellationToken)
     {
         var updated = await _notificationService.MarkReadAsync(id, cancellationToken);
-        return updated ? NoContent() : NotFound();
+        return updated is null ? NotFound() : Ok(updated);
     }
 
     [HttpPatch("read-all")]

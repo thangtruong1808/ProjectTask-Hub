@@ -4,6 +4,8 @@ export type TaskStatus = 'Pending' | 'InProgress' | 'Completed' | 'Cancelled'
 
 export interface TaskItem {
   id: number
+  projectId: number
+  projectName?: string | null
   name: string
   description: string | null
   createdAt: string
@@ -18,6 +20,7 @@ export interface CreateTaskPayload {
   name: string
   description?: string | null
   status?: TaskStatus
+  projectId: number
 }
 
 export interface UpdateTaskPayload {
@@ -29,6 +32,7 @@ export interface UpdateTaskPayload {
 export interface TaskQuery {
   search?: string
   status?: TaskStatus | ''
+  projectId?: number
 }
 
 const TASK_STATUSES: TaskStatus[] = [
@@ -46,6 +50,9 @@ export async function getTodos(query: TaskQuery = {}): Promise<TaskItem[]> {
   const params = new URLSearchParams()
   if (query.search?.trim()) params.set('search', query.search.trim())
   if (query.status) params.set('status', query.status)
+  if (query.projectId != null && query.projectId > 0) {
+    params.set('projectId', String(query.projectId))
+  }
   const qs = params.toString()
   return apiFetch<TaskItem[]>(`/todos${qs ? `?${qs}` : ''}`)
 }
@@ -57,6 +64,7 @@ export async function createTodo(payload: CreateTaskPayload): Promise<TaskItem> 
       name: payload.name,
       description: payload.description ?? null,
       status: payload.status ?? 'Pending',
+      projectId: payload.projectId,
     }),
   })
 }

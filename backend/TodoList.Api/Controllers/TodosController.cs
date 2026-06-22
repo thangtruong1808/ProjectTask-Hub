@@ -23,9 +23,12 @@ public class TodosController : ControllerBase
     public async Task<ActionResult<IEnumerable<TaskItem>>> GetTodos(
         [FromQuery] string? search,
         [FromQuery] Models.TaskStatus? status,
+        [FromQuery] long? projectId,
         CancellationToken cancellationToken)
     {
-        var tasks = await _taskService.GetAllAsync(new TaskQueryParams { Search = search, Status = status }, cancellationToken);
+        var tasks = await _taskService.GetAllAsync(
+            new TaskQueryParams { Search = search, Status = status, ProjectId = projectId },
+            cancellationToken);
         return Ok(tasks);
     }
 
@@ -96,9 +99,17 @@ public class TodosController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteTodo(long id, CancellationToken cancellationToken)
     {
-        var deleted = await _taskService.DeleteAsync(id, cancellationToken);
-        return deleted ? NoContent() : NotFound();
+        try
+        {
+            var deleted = await _taskService.DeleteAsync(id, cancellationToken);
+            return deleted ? NoContent() : NotFound();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
     }
 }

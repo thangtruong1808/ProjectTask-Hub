@@ -2,19 +2,34 @@ namespace TodoList.Api.Repositories;
 
 internal static class NotificationSqlQueries
 {
-    public const string Insert = """
-        INSERT INTO Notifications (UserId, Type, Title, Message, TaskId, IsRead, CreatedAt)
-        VALUES (@UserId, @Type, @Title, @Message, @TaskId, @IsRead, @CreatedAt);
-
-        SELECT Id, UserId, Type, Title, Message, TaskId, IsRead, CreatedAt
-        FROM Notifications WHERE Id = LAST_INSERT_ID();
+    private const string SelectColumns = """
+        n.Id, n.UserId, n.Type, n.Title, n.Message, n.TaskId, n.IsRead,
+        COALESCE(n.ReadAt, IF(n.IsRead = 1, n.CreatedAt, NULL)) AS ReadAt,
+        n.CreatedAt,
+        p.Name AS ProjectName,
+        p.Code AS ProjectCode
         """;
 
-    public const string SelectByUser = """
-        SELECT Id, UserId, Type, Title, Message, TaskId, IsRead, CreatedAt
-        FROM Notifications
-        WHERE UserId = @UserId
-        ORDER BY CreatedAt DESC
+    private const string FromJoin = """
+        FROM Notifications n
+        LEFT JOIN Tasks t ON t.Id = n.TaskId
+        LEFT JOIN Projects p ON p.Id = t.ProjectId
+        """;
+
+    public static readonly string Insert = $"""
+        INSERT INTO Notifications (UserId, Type, Title, Message, TaskId, IsRead, ReadAt, CreatedAt)
+        VALUES (@UserId, @Type, @Title, @Message, @TaskId, @IsRead, @ReadAt, @CreatedAt);
+
+        SELECT {SelectColumns}
+        {FromJoin}
+        WHERE n.Id = LAST_INSERT_ID();
+        """;
+
+    public static readonly string SelectByUser = $"""
+        SELECT {SelectColumns}
+        {FromJoin}
+        WHERE n.UserId = @UserId
+        ORDER BY n.CreatedAt DESC
         LIMIT @Limit OFFSET @Offset;
         """;
 
@@ -23,10 +38,21 @@ internal static class NotificationSqlQueries
         """;
 
     public const string MarkRead = """
-        UPDATE Notifications SET IsRead = 1 WHERE Id = @Id AND UserId = @UserId;
+        UPDATE Notifications
+        SET IsRead = 1, ReadAt = COALESCE(ReadAt, @ReadAt)
+        WHERE Id = @Id AND UserId = @UserId;
         """;
 
     public const string MarkAllRead = """
-        UPDATE Notifications SET IsRead = 1 WHERE UserId = @UserId AND IsRead = 0;
+        UPDATE Notifications
+        SET IsRead = 1, ReadAt = COALESCE(ReadAt, @ReadAt)
+        WHERE UserId = @UserId AND IsRead = 0;
+        """;
+
+    public static readonly string SelectById = $"""
+        SELECT {SelectColumns}
+        {FromJoin}
+        WHERE n.Id = @Id AND n.UserId = @UserId
+        LIMIT 1;
         """;
 }

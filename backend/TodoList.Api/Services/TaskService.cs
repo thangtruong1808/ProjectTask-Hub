@@ -10,6 +10,7 @@ public class TaskService : ITaskService
 {
     private readonly ITaskRepository _taskRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IProjectRepository _projectRepository;
     private readonly INotificationRepository _notificationRepository;
     private readonly ICurrentUserService _currentUser;
     private readonly IHubContext<NotificationHub> _hubContext;
@@ -18,6 +19,7 @@ public class TaskService : ITaskService
     public TaskService(
         ITaskRepository taskRepository,
         IUserRepository userRepository,
+        IProjectRepository projectRepository,
         INotificationRepository notificationRepository,
         ICurrentUserService currentUser,
         IHubContext<NotificationHub> hubContext,
@@ -25,6 +27,7 @@ public class TaskService : ITaskService
     {
         _taskRepository = taskRepository;
         _userRepository = userRepository;
+        _projectRepository = projectRepository;
         _notificationRepository = notificationRepository;
         _currentUser = currentUser;
         _hubContext = hubContext;
@@ -38,7 +41,7 @@ public class TaskService : ITaskService
 
         if (_currentUser.IsAdmin)
         {
-            return await _taskRepository.GetAllForAdminAsync(search, status, cancellationToken);
+            return await _taskRepository.GetAllForAdminAsync(search, status, query.ProjectId, cancellationToken);
         }
 
         if (!_currentUser.UserId.HasValue)
@@ -46,7 +49,7 @@ public class TaskService : ITaskService
             return [];
         }
 
-        return await _taskRepository.GetAllForUserAsync(_currentUser.UserId.Value, search, status, cancellationToken);
+        return await _taskRepository.GetAllForUserAsync(_currentUser.UserId.Value, search, status, query.ProjectId, cancellationToken);
     }
 
     public async Task<TaskItem?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
@@ -72,9 +75,15 @@ public class TaskService : ITaskService
             throw new ArgumentException("Task name is required.", nameof(request));
         }
 
+        if (request.ProjectId <= 0)
+        {
+            throw new ArgumentException("Project is required.", nameof(request));
+        }
+
         var now = DateTime.UtcNow;
         var task = new TaskItem
         {
+            ProjectId = request.ProjectId,
             Name = request.Name.Trim(),
             Description = request.Description?.Trim(),
             Status = request.Status,
@@ -136,6 +145,11 @@ public class TaskService : ITaskService
             throw new ArgumentException("Invalid assignee user.");
         }
 
+        if (!await _projectRepository.IsMemberAsync(task.ProjectId, request.UserId, cancellationToken))
+        {
+            throw new ArgumentException("User must be assigned to the project before receiving tasks.");
+        }
+
         var now = DateTime.UtcNow;
         var assigned = await _taskRepository.AssignAsync(id, request.UserId, _currentUser.UserId.Value, now, now, cancellationToken);
         if (!assigned)
@@ -143,12 +157,15 @@ public class TaskService : ITaskService
             return false;
         }
 
+        var projectLabel = FormatProjectLabel(null, task.ProjectName);
+        var taskName = task.Name.Trim();
+
         var notification = await _notificationRepository.CreateAsync(new NotificationItem
         {
             UserId = request.UserId,
             Type = "TaskAssigned",
-            Title = "New task assigned",
-            Message = $"You have been assigned task: {task.Name}",
+            Title = taskName,
+            Message = $"You have been assigned a task in {projectLabel}.",
             TaskId = id,
             IsRead = false,
             CreatedAt = now
@@ -158,8 +175,11 @@ public class TaskService : ITaskService
         {
             notificationId = notification.Id,
             taskId = id,
-            taskName = task.Name,
+            taskName,
+            title = notification.Title,
             message = notification.Message,
+            projectName = notification.ProjectName ?? task.ProjectName,
+            projectCode = notification.ProjectCode,
             createdAt = notification.CreatedAt
         }, cancellationToken);
 
@@ -168,8 +188,13 @@ public class TaskService : ITaskService
 
     public async Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
+        if (!_currentUser.IsAdmin)
+        {
+            throw new UnauthorizedAccessException("Only admins can delete tasks.");
+        }
+
         var existing = await _taskRepository.GetByIdAsync(id, cancellationToken);
-        if (existing is null || !CanAccessTask(existing))
+        if (existing is null)
         {
             return false;
         }
@@ -185,5 +210,25 @@ public class TaskService : ITaskService
         }
 
         return _currentUser.UserId.HasValue && task.AssignedToUserId == _currentUser.UserId.Value;
+    }
+
+    private static string FormatProjectLabel(string? projectCode, string? projectName)
+    {
+        if (!string.IsNullOrWhiteSpace(projectCode) && !string.IsNullOrWhiteSpace(projectName))
+        {
+            return $"{projectCode.Trim()} — {projectName.Trim()}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(projectName))
+        {
+            return projectName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(projectCode))
+        {
+            return projectCode.Trim();
+        }
+
+        return "Unknown project";
     }
 }

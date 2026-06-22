@@ -15,19 +15,25 @@ public class TaskRepository : ITaskRepository
         _logger = logger;
     }
 
-    public async Task<IReadOnlyList<TaskItem>> GetAllForAdminAsync(string? search, int? status, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<TaskItem>> GetAllForAdminAsync(string? search, int? status, long? projectId, CancellationToken cancellationToken = default)
     {
         await using var connection = _connectionFactory.CreateConnection();
         var tasks = await connection.QueryAsync<TaskItem>(
-            new CommandDefinition(TaskSqlQueries.SelectAllAdmin, new { Search = search, Status = status }, cancellationToken: cancellationToken));
+            new CommandDefinition(
+                TaskSqlQueries.SelectAllAdmin,
+                new { Search = search, Status = status, ProjectId = projectId is > 0 ? projectId.Value : 0L },
+                cancellationToken: cancellationToken));
         return tasks.AsList();
     }
 
-    public async Task<IReadOnlyList<TaskItem>> GetAllForUserAsync(long userId, string? search, int? status, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<TaskItem>> GetAllForUserAsync(long userId, string? search, int? status, long? projectId, CancellationToken cancellationToken = default)
     {
         await using var connection = _connectionFactory.CreateConnection();
         var tasks = await connection.QueryAsync<TaskItem>(
-            new CommandDefinition(TaskSqlQueries.SelectAllForUser, new { UserId = userId, Search = search, Status = status }, cancellationToken: cancellationToken));
+            new CommandDefinition(
+                TaskSqlQueries.SelectAllForUser,
+                new { UserId = userId, Search = search, Status = status, ProjectId = projectId is > 0 ? projectId.Value : 0L },
+                cancellationToken: cancellationToken));
         return tasks.AsList();
     }
 
@@ -44,6 +50,7 @@ public class TaskRepository : ITaskRepository
         return await connection.QuerySingleAsync<TaskItem>(
             new CommandDefinition(TaskSqlQueries.Insert, new
             {
+                task.ProjectId,
                 task.Name,
                 task.Description,
                 task.CreatedAt,
