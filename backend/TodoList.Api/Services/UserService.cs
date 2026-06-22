@@ -59,24 +59,46 @@ public class UserService : IUserService
 
     public async Task<IReadOnlyList<UserDto>> GetAssignableUsersAsync(CancellationToken cancellationToken = default)
     {
+        return await SearchAssignableUsersAsync(null, 0, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<UserDto>> SearchAssignableUsersAsync(
+        string? search,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
         if (!_currentUser.IsAdmin && !_currentUser.IsProjectManager)
         {
             return [];
         }
 
-        var users = await _userRepository.GetAllActiveAsync(cancellationToken);
-        if (_currentUser.IsAdmin)
+        var roles = _currentUser.IsAdmin
+            ? new[] { UserRole.User, UserRole.ProjectManager }
+            : new[] { UserRole.User };
+
+        IReadOnlyList<User> users;
+        if (string.IsNullOrWhiteSpace(search))
         {
-            return users
-                .Where(u => u.Role is UserRole.User or UserRole.ProjectManager)
-                .Select(AuthService.MapUser)
-                .ToList();
+            if (limit > 0)
+            {
+                users = await _userRepository.SearchAssignableActiveAsync(roles, null, limit, cancellationToken);
+            }
+            else
+            {
+                users = await _userRepository.GetAllActiveAsync(cancellationToken);
+                users = users.Where(u => roles.Contains(u.Role)).ToList();
+            }
+        }
+        else
+        {
+            users = await _userRepository.SearchAssignableActiveAsync(
+                roles,
+                search,
+                limit > 0 ? limit : 20,
+                cancellationToken);
         }
 
-        return users
-            .Where(u => u.Role == UserRole.User)
-            .Select(AuthService.MapUser)
-            .ToList();
+        return users.Select(AuthService.MapUser).ToList();
     }
 
     public async Task<IReadOnlyList<UserListItemDto>> GetAllUsersAsync(CancellationToken cancellationToken = default)

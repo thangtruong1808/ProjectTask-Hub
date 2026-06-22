@@ -1,4 +1,5 @@
-import { apiFetch, type UserDto } from './client'
+import { apiFetch, type UserDto, type UserRole } from './client'
+import { ROLE_OPTIONS } from './users'
 
 export type ProjectStatus = 'Active' | 'OnHold' | 'Completed' | 'Archived'
 
@@ -30,6 +31,7 @@ export interface ProjectMemberItem {
   email: string
   firstName: string
   lastName: string
+  role: UserRole
   assignedAt: string
 }
 
@@ -129,13 +131,28 @@ function normalizeProjectListItem(raw: RawProject): ProjectListItem {
   }
 }
 
+function normalizeRole(raw: unknown): UserRole {
+  if (typeof raw === 'number') {
+    if (raw === 1) return 'Admin'
+    if (raw === 2) return 'ProjectManager'
+    return 'User'
+  }
+
+  const roleRaw = String(raw ?? 'User')
+  return (roleRaw === 'Admin' || roleRaw === 'ProjectManager' || roleRaw === 'User'
+    ? roleRaw
+    : 'User') as UserRole
+}
+
 function normalizeMember(raw: RawMember): ProjectMemberItem {
   const assignedAt = raw.assignedAt ?? raw.AssignedAt
+
   return {
     userId: Number(raw.userId ?? raw.UserId),
     email: String(raw.email ?? raw.Email ?? ''),
     firstName: String(raw.firstName ?? raw.FirstName ?? ''),
     lastName: String(raw.lastName ?? raw.LastName ?? ''),
+    role: normalizeRole(raw.role ?? raw.Role),
     assignedAt: String(assignedAt ?? ''),
   }
 }
@@ -230,4 +247,8 @@ export async function getProjectAssignableUsers(projectId: number) {
 export function memberDisplayName(member: ProjectMemberItem | UserDto) {
   const name = `${member.firstName} ${member.lastName}`.trim()
   return name || member.email
+}
+
+export function memberRoleLabel(role: UserRole) {
+  return ROLE_OPTIONS.find((option) => option.value === role)?.label ?? role
 }

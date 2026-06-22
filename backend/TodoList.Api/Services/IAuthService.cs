@@ -18,6 +18,10 @@ public interface IUserService
     Task<bool> UpdateProfileAsync(UpdateProfileRequest request, CancellationToken cancellationToken = default);
     Task<bool> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<UserDto>> GetAssignableUsersAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserDto>> SearchAssignableUsersAsync(
+        string? search,
+        int limit,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<UserListItemDto>> GetAllUsersAsync(CancellationToken cancellationToken = default);
     Task<UserDto?> UpdateUserRoleAsync(long id, UserRole role, CancellationToken cancellationToken = default);
 }

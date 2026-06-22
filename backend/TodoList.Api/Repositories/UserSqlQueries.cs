@@ -23,6 +23,22 @@ internal static class UserSqlQueries
         ORDER BY FirstName, LastName;
         """;
 
+    public const string SearchAssignableActive = """
+        SELECT Id, Email, PasswordHash, FirstName, LastName, Phone, Role, IsActive, CreatedAt, UpdatedAt
+        FROM Users
+        WHERE IsActive = 1
+          AND Role IN @Roles
+          AND (
+              @Search IS NULL OR @Search = '' OR
+              FirstName LIKE CONCAT('%', @Search, '%') OR
+              LastName LIKE CONCAT('%', @Search, '%') OR
+              Email LIKE CONCAT('%', @Search, '%') OR
+              CONCAT(FirstName, ' ', LastName) LIKE CONCAT('%', @Search, '%')
+          )
+        ORDER BY FirstName, LastName
+        LIMIT @Limit;
+        """;
+
     public const string Insert = """
         INSERT INTO Users (Email, PasswordHash, FirstName, LastName, Phone, Role, IsActive, CreatedAt, UpdatedAt)
         VALUES (@Email, @PasswordHash, @FirstName, @LastName, @Phone, @Role, @IsActive, @CreatedAt, @UpdatedAt);

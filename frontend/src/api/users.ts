@@ -71,6 +71,13 @@ export function getAssignableUsers() {
   return apiFetch<UserDto[]>('/users/assignable')
 }
 
+export function searchAssignableUsers(search: string, limit = 20) {
+  const params = new URLSearchParams()
+  params.set('search', search.trim())
+  params.set('limit', String(limit))
+  return apiFetch<UserDto[]>(`/users/assignable?${params.toString()}`)
+}
+
 export async function getAdminUsers() {
   const data = await apiFetch<RawUserListItem[]>('/users')
   return data.map(normalizeUserListItem)

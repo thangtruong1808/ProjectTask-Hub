@@ -1,20 +1,28 @@
 import { useEffect, useState } from 'react'
-import type { UserDto } from '../api/client'
+import type { UserDto, UserRole } from '../api/client'
 import {
   assignProjectMember,
   getProjectMembers,
   memberDisplayName,
+  memberRoleLabel,
   removeProjectMember,
   type ProjectMemberItem,
 } from '../api/projects'
 import { FolderIcon, UserPlusIcon, UsersIcon, XMarkIcon } from './icons/Icons'
 import Spinner from './Spinner'
+import UserSearchPicker from './UserSearchPicker'
 
 interface ProjectMembersPanelProps {
   projectId: number
   projectLabel: string
-  assignableUsers: UserDto[]
+  assignableUsers?: UserDto[]
   onMembersChanged?: () => void
+}
+
+const MEMBER_ROLE_STYLES: Record<UserRole, string> = {
+  User: 'bg-slate-100 text-slate-600',
+  ProjectManager: 'bg-amber-100 text-amber-800',
+  Admin: 'bg-blue-100 text-blue-800',
 }
 
 function formatAssignedAt(value: string) {
@@ -35,12 +43,11 @@ function formatAssignedAt(value: string) {
 export default function ProjectMembersPanel({
   projectId,
   projectLabel,
-  assignableUsers,
   onMembersChanged,
 }: ProjectMembersPanelProps) {
   const [members, setMembers] = useState<ProjectMemberItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedUserId, setSelectedUserId] = useState<number | ''>('')
+  const [selectedUser, setSelectedUser] = useState<UserDto | null>(null)
   const [assigning, setAssigning] = useState(false)
   const [removingUserId, setRemovingUserId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -49,6 +56,7 @@ export default function ProjectMembersPanel({
     let cancelled = false
     setLoading(true)
     setError(null)
+    setSelectedUser(null)
     getProjectMembers(projectId)
       .then((data) => {
         if (!cancelled) setMembers(data)
@@ -64,18 +72,17 @@ export default function ProjectMembersPanel({
     }
   }, [projectId])
 
-  const memberIds = new Set(members.map((m) => m.userId))
-  const availableUsers = assignableUsers.filter((u) => !memberIds.has(u.id))
+  const memberIds = members.map((m) => m.userId)
 
   async function handleAssign() {
-    if (!selectedUserId) return
+    if (!selectedUser) return
     setAssigning(true)
     setError(null)
     try {
-      await assignProjectMember(projectId, selectedUserId)
+      await assignProjectMember(projectId, selectedUser.id)
       const data = await getProjectMembers(projectId)
       setMembers(data)
-      setSelectedUserId('')
+      setSelectedUser(null)
       onMembersChanged?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not assign user to project.')
@@ -134,8 +141,13 @@ export default function ProjectMembersPanel({
                   className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white bg-white px-3 py-2 shadow-sm"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-900">
-                      {memberDisplayName(member)}
+                    <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-medium text-slate-900">
+                      <span className="truncate">{memberDisplayName(member)}</span>
+                      <span
+                        className={`inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${MEMBER_ROLE_STYLES[member.role]}`}
+                      >
+                        {memberRoleLabel(member.role)}
+                      </span>
                     </p>
                     <p className="truncate text-xs text-slate-500">{member.email}</p>
                   </div>
@@ -165,33 +177,21 @@ export default function ProjectMembersPanel({
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
-              <label htmlFor="project-member-select" className="mb-1 block text-xs font-medium text-slate-600">
+              <label htmlFor="project-member-search" className="mb-1 block text-xs font-medium text-slate-600">
                 Assign user
               </label>
-              <select
-                id="project-member-select"
-                value={selectedUserId}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setSelectedUserId(value === '' ? '' : Number(value))
-                }}
-                disabled={assigning || availableUsers.length === 0}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
-              >
-                <option value="">
-                  {availableUsers.length === 0 ? 'All users already assigned' : 'Select user...'}
-                </option>
-                {availableUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {memberDisplayName(user)} ({user.email})
-                  </option>
-                ))}
-              </select>
+              <UserSearchPicker
+                inputId="project-member-search"
+                selectedUser={selectedUser}
+                onSelect={setSelectedUser}
+                excludeUserIds={memberIds}
+                disabled={assigning}
+              />
             </div>
             <button
               type="button"
               onClick={handleAssign}
-              disabled={assigning || !selectedUserId}
+              disabled={assigning || !selectedUser}
               className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {assigning ? (

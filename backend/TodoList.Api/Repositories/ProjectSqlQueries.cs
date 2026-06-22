@@ -19,7 +19,7 @@ internal static class ProjectSqlQueries
         """;
 
     public const string SelectMembers = """
-        SELECT pm.UserId, u.Email, u.FirstName, u.LastName, pm.AssignedAt
+        SELECT pm.UserId, u.Email, u.FirstName, u.LastName, u.Role, pm.AssignedAt
         FROM ProjectMembers pm
         INNER JOIN Users u ON u.Id = pm.UserId
         WHERE pm.ProjectId = @ProjectId

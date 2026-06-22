@@ -35,6 +35,26 @@ public class UserRepository : IUserRepository
         return users.AsList();
     }
 
+    public async Task<IReadOnlyList<User>> SearchAssignableActiveAsync(
+        IReadOnlyList<UserRole> roles,
+        string? search,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = _connectionFactory.CreateConnection();
+        var users = await connection.QueryAsync<User>(
+            new CommandDefinition(
+                UserSqlQueries.SearchAssignableActive,
+                new
+                {
+                    Roles = roles.Select(role => (int)role).ToArray(),
+                    Search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
+                    Limit = Math.Clamp(limit, 1, 50),
+                },
+                cancellationToken: cancellationToken));
+        return users.AsList();
+    }
+
     public async Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
         await using var connection = _connectionFactory.CreateConnection();

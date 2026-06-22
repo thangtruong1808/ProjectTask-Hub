@@ -613,12 +613,12 @@ export default function TodoList() {
             current.map((item) =>
               item.id === id
                 ? {
-                    ...item,
-                    name,
-                    description,
-                    status: newTaskStatus as TaskStatus,
-                    updatedAt: new Date().toISOString(),
-                  }
+                  ...item,
+                  name,
+                  description,
+                  status: newTaskStatus as TaskStatus,
+                  updatedAt: new Date().toISOString(),
+                }
                 : item,
             ),
           )
@@ -630,10 +630,10 @@ export default function TodoList() {
             current.map((item) =>
               item.id === id
                 ? {
-                    ...item,
-                    status: newTaskStatus as TaskStatus,
-                    updatedAt: new Date().toISOString(),
-                  }
+                  ...item,
+                  status: newTaskStatus as TaskStatus,
+                  updatedAt: new Date().toISOString(),
+                }
                 : item,
             ),
           )
@@ -836,11 +836,10 @@ export default function TodoList() {
             type="button"
             onClick={toggleAddForm}
             disabled={isFormSubmitting}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
-              showAddForm
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${showAddForm
                 ? 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                 : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+              }`}
             aria-expanded={showAddForm}
           >
             {showAddForm ? (
@@ -989,252 +988,251 @@ export default function TodoList() {
       )}
 
       {(isEditing || (showAddForm && canCreateTask)) && (
-      <form
-        ref={taskFormRef}
-        onSubmit={handleSubmitTask}
-        className={`mb-6 space-y-4 ${
-          isEditing
-            ? 'rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5'
-            : 'rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5'
-        }`}
-      >
-        {isEditing ? (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">
-                Editing Task #{editingId}
-              </p>
-              {isNameDescriptionReadOnly && (
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Task name and description are read-only. You can update status only.
+        <form
+          ref={taskFormRef}
+          onSubmit={handleSubmitTask}
+          className={`mb-6 space-y-4 ${isEditing
+              ? 'rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5'
+              : 'rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5'
+            }`}
+        >
+          {isEditing ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">
+                  Editing Task #{editingId}
                 </p>
-              )}
+                {isNameDescriptionReadOnly && (
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Task name and description are read-only. You can update status only.
+                  </p>
+                )}
+              </div>
+              <StatusBadge status={newTaskStatus as TaskStatus} />
             </div>
-            <StatusBadge status={newTaskStatus as TaskStatus} />
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">New Task</p>
-              <p className="text-xs text-slate-500">
-                Create a task in one of your projects.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={cancelAddForm}
-              disabled={isFormSubmitting}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-70"
-            >
-              <XMarkIcon size={14} />
-              Close
-            </button>
-          </div>
-        )}
-
-        {canCreateTask && !isEditing && (
-          <div>
-            <label htmlFor="task-project" className="mb-1 block text-sm font-medium text-slate-600">
-              Project <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              {projectsLoading && (
-                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
-                  <Spinner size="sm" label="Loading projects" />
-                </span>
-              )}
-              <select
-                id="task-project"
-                value={newTaskProjectId}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setNewTaskProjectId(value === '' ? '' : Number(value))
-                }}
-                required
-                disabled={isFormSubmitting || projectsLoading}
-                className={`${selectClass} ${projectsLoading ? 'border-blue-200 bg-blue-50/40 pr-10' : ''}`}
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">New Task</p>
+                <p className="text-xs text-slate-500">
+                  Create a task in one of your projects.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cancelAddForm}
+                disabled={isFormSubmitting}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-70"
               >
-                <option value="" disabled>
-                  {projectsLoading ? 'Loading projects...' : 'Select project...'}
-                </option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.code ? `${project.code} — ${project.name}` : project.name}
-                  </option>
-                ))}
-              </select>
+                <XMarkIcon size={14} />
+                Close
+              </button>
             </div>
-          </div>
-        )}
-
-        <div>
-          <label
-            htmlFor="task-name"
-            className="mb-1 block text-sm font-medium text-slate-600"
-          >
-            Task name <span className="text-red-500">*</span>
-            {isNameDescriptionReadOnly && (
-              <span className="ml-1 font-normal text-slate-400">(read-only)</span>
-            )}
-          </label>
-          <input
-            id="task-name"
-            type="text"
-            value={newTaskName}
-            onChange={(event) => {
-              setNewTaskName(event.target.value)
-              clearFieldError('name')
-            }}
-            onBlur={() => {
-              if (isNameDescriptionReadOnly) return
-              const nameError = validateTaskName(newTaskName)
-              setFormErrors((current) => {
-                const next = { ...current }
-                if (nameError) {
-                  next.name = nameError
-                } else {
-                  delete next.name
-                }
-                return next
-              })
-            }}
-            placeholder="Enter task name"
-            maxLength={TASK_NAME_MAX_LENGTH}
-            aria-invalid={Boolean(formErrors.name)}
-            aria-describedby={
-              [formErrors.name ? 'task-name-error' : null, 'task-name-count']
-                .filter(Boolean)
-                .join(' ') || undefined
-            }
-            readOnly={isNameDescriptionReadOnly}
-            className={`w-full rounded-lg border px-3 py-2 text-slate-900 outline-none focus:ring-2 ${fieldErrorClass(Boolean(formErrors.name))} ${isNameDescriptionReadOnly ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-600' : ''}`}
-            disabled={isFormSubmitting || isNameDescriptionReadOnly}
-          />
-          <FieldError id="task-name-error" message={formErrors.name} />
-          <CharacterCount
-            id="task-name-count"
-            current={newTaskName.trim().length}
-            max={TASK_NAME_MAX_LENGTH}
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="task-description"
-            className="mb-1 block text-sm font-medium text-slate-600"
-          >
-            Description <span className="text-slate-400">(optional)</span>
-            {isNameDescriptionReadOnly && (
-              <span className="ml-1 font-normal text-slate-400">(read-only)</span>
-            )}
-          </label>
-          <textarea
-            id="task-description"
-            value={newTaskDescription}
-            onChange={(event) => {
-              setNewTaskDescription(event.target.value)
-              clearFieldError('description')
-            }}
-            onBlur={() => {
-              if (isNameDescriptionReadOnly) return
-              const descriptionError = validateTaskDescription(newTaskDescription)
-              setFormErrors((current) => {
-                const next = { ...current }
-                if (descriptionError) {
-                  next.description = descriptionError
-                } else {
-                  delete next.description
-                }
-                return next
-              })
-            }}
-            placeholder="Enter task description"
-            rows={3}
-            maxLength={TASK_DESCRIPTION_MAX_LENGTH}
-            aria-invalid={Boolean(formErrors.description)}
-            aria-describedby={
-              [
-                formErrors.description ? 'task-description-error' : null,
-                'task-description-count',
-              ]
-                .filter(Boolean)
-                .join(' ') || undefined
-            }
-            readOnly={isNameDescriptionReadOnly}
-            className={`w-full rounded-lg border px-3 py-2 text-slate-900 outline-none focus:ring-2 ${fieldErrorClass(Boolean(formErrors.description))} ${isNameDescriptionReadOnly ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-600' : ''}`}
-            disabled={isFormSubmitting || isNameDescriptionReadOnly}
-          />
-          <FieldError
-            id="task-description-error"
-            message={formErrors.description}
-          />
-          <CharacterCount
-            id="task-description-count"
-            current={newTaskDescription.trim().length}
-            max={TASK_DESCRIPTION_MAX_LENGTH}
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="task-status"
-            className="mb-1 block text-sm font-medium text-slate-600"
-          >
-            Status
-          </label>
-          <select
-            id="task-status"
-            value={newTaskStatus}
-            onChange={(event) => {
-              const value = event.target.value
-              setNewTaskStatus(value === '' ? '' : (value as TaskStatus))
-            }}
-            className={`${selectClass} ${isSavingEdit ? 'border-blue-200 bg-blue-50/40' : ''}`}
-            disabled={isFormSubmitting}
-            aria-busy={isSavingEdit}
-          >
-            <option value="" disabled={isEditing}>
-              Select status...
-            </option>
-            {TASK_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {STATUS_LABELS[status]}
-              </option>
-            ))}
-          </select>
-          {isSavingEdit && (
-            <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-blue-600">
-              <Spinner size="sm" label="Saving task status" />
-              Saving changes...
-            </p>
           )}
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            disabled={isFormSubmitting}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isFormSubmitting && (
-              <Spinner
-                size="sm"
-                label={isEditing ? 'Saving task' : 'Creating task'}
-              />
-            )}
-            {isEditing ? (canEditTaskDetails ? 'Save Changes' : 'Save Status') : 'Add Task'}
-          </button>
-          {isEditing && (
-            <button
-              type="button"
-              onClick={cancelEdit}
-              disabled={isFormSubmitting}
-              className="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+          {canCreateTask && !isEditing && (
+            <div>
+              <label htmlFor="task-project" className="mb-1 block text-sm font-medium text-slate-600">
+                Project <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                {projectsLoading && (
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
+                    <Spinner size="sm" label="Loading projects" />
+                  </span>
+                )}
+                <select
+                  id="task-project"
+                  value={newTaskProjectId}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setNewTaskProjectId(value === '' ? '' : Number(value))
+                  }}
+                  required
+                  disabled={isFormSubmitting || projectsLoading}
+                  className={`${selectClass} ${projectsLoading ? 'border-blue-200 bg-blue-50/40 pr-10' : ''}`}
+                >
+                  <option value="" disabled>
+                    {projectsLoading ? 'Loading projects...' : 'Select project...'}
+                  </option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.code ? `${project.code} — ${project.name}` : project.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label
+              htmlFor="task-name"
+              className="mb-1 block text-sm font-medium text-slate-600"
             >
-              Cancel
+              Task name <span className="text-red-500">*</span>
+              {isNameDescriptionReadOnly && (
+                <span className="ml-1 font-normal text-slate-400">(read-only)</span>
+              )}
+            </label>
+            <input
+              id="task-name"
+              type="text"
+              value={newTaskName}
+              onChange={(event) => {
+                setNewTaskName(event.target.value)
+                clearFieldError('name')
+              }}
+              onBlur={() => {
+                if (isNameDescriptionReadOnly) return
+                const nameError = validateTaskName(newTaskName)
+                setFormErrors((current) => {
+                  const next = { ...current }
+                  if (nameError) {
+                    next.name = nameError
+                  } else {
+                    delete next.name
+                  }
+                  return next
+                })
+              }}
+              placeholder="Enter task name"
+              maxLength={TASK_NAME_MAX_LENGTH}
+              aria-invalid={Boolean(formErrors.name)}
+              aria-describedby={
+                [formErrors.name ? 'task-name-error' : null, 'task-name-count']
+                  .filter(Boolean)
+                  .join(' ') || undefined
+              }
+              readOnly={isNameDescriptionReadOnly}
+              className={`w-full rounded-lg border px-3 py-2 text-slate-900 outline-none focus:ring-2 ${fieldErrorClass(Boolean(formErrors.name))} ${isNameDescriptionReadOnly ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-600' : ''}`}
+              disabled={isFormSubmitting || isNameDescriptionReadOnly}
+            />
+            <FieldError id="task-name-error" message={formErrors.name} />
+            <CharacterCount
+              id="task-name-count"
+              current={newTaskName.trim().length}
+              max={TASK_NAME_MAX_LENGTH}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="task-description"
+              className="mb-1 block text-sm font-medium text-slate-600"
+            >
+              Description <span className="text-slate-400">(optional)</span>
+              {isNameDescriptionReadOnly && (
+                <span className="ml-1 font-normal text-slate-400">(read-only)</span>
+              )}
+            </label>
+            <textarea
+              id="task-description"
+              value={newTaskDescription}
+              onChange={(event) => {
+                setNewTaskDescription(event.target.value)
+                clearFieldError('description')
+              }}
+              onBlur={() => {
+                if (isNameDescriptionReadOnly) return
+                const descriptionError = validateTaskDescription(newTaskDescription)
+                setFormErrors((current) => {
+                  const next = { ...current }
+                  if (descriptionError) {
+                    next.description = descriptionError
+                  } else {
+                    delete next.description
+                  }
+                  return next
+                })
+              }}
+              placeholder="Enter task description"
+              rows={3}
+              maxLength={TASK_DESCRIPTION_MAX_LENGTH}
+              aria-invalid={Boolean(formErrors.description)}
+              aria-describedby={
+                [
+                  formErrors.description ? 'task-description-error' : null,
+                  'task-description-count',
+                ]
+                  .filter(Boolean)
+                  .join(' ') || undefined
+              }
+              readOnly={isNameDescriptionReadOnly}
+              className={`w-full rounded-lg border px-3 py-2 text-slate-900 outline-none focus:ring-2 ${fieldErrorClass(Boolean(formErrors.description))} ${isNameDescriptionReadOnly ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-600' : ''}`}
+              disabled={isFormSubmitting || isNameDescriptionReadOnly}
+            />
+            <FieldError
+              id="task-description-error"
+              message={formErrors.description}
+            />
+            <CharacterCount
+              id="task-description-count"
+              current={newTaskDescription.trim().length}
+              max={TASK_DESCRIPTION_MAX_LENGTH}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="task-status"
+              className="mb-1 block text-sm font-medium text-slate-600"
+            >
+              Status
+            </label>
+            <select
+              id="task-status"
+              value={newTaskStatus}
+              onChange={(event) => {
+                const value = event.target.value
+                setNewTaskStatus(value === '' ? '' : (value as TaskStatus))
+              }}
+              className={`${selectClass} ${isSavingEdit ? 'border-blue-200 bg-blue-50/40' : ''}`}
+              disabled={isFormSubmitting}
+              aria-busy={isSavingEdit}
+            >
+              <option value="" disabled={isEditing}>
+                Select status...
+              </option>
+              {TASK_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+            {isSavingEdit && (
+              <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-blue-600">
+                <Spinner size="sm" label="Saving task status" />
+                Saving changes...
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={isFormSubmitting}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isFormSubmitting && (
+                <Spinner
+                  size="sm"
+                  label={isEditing ? 'Saving task' : 'Creating task'}
+                />
+              )}
+              {isEditing ? (canEditTaskDetails ? 'Save Changes' : 'Save Status') : 'Add Task'}
             </button>
-          )}
-        </div>
-      </form>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={isFormSubmitting}
+                className="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
       )}
 
       {successMessage && (
@@ -1272,309 +1270,309 @@ export default function TodoList() {
               </span>
             </div>
           )}
-        <>
-          <div className="space-y-3 md:hidden">
-            {tasks.length === 0 ? (
-              <p className="rounded-xl border border-slate-200 px-4 py-12 text-center text-slate-500">
-                {emptyMessage}
-              </p>
-            ) : (
-              paginatedTasks.map((task, index) => {
-                const isSelected = editingId === task.id
-                const isRowDeleting =
-                  actionLoading?.type === 'delete' &&
-                  actionLoading.id === task.id
-                const isRowAssigning =
-                  actionLoading?.type === 'assign' &&
-                  actionLoading.id === task.id
-                const isRowEditing =
-                  actionLoading?.type === 'edit' &&
-                  actionLoading.id === task.id
-                const sequenceNumber = (currentPage - 1) * pageSize + index + 1
+          <>
+            <div className="space-y-3 md:hidden">
+              {tasks.length === 0 ? (
+                <p className="rounded-xl border border-slate-200 px-4 py-12 text-center text-slate-500">
+                  {emptyMessage}
+                </p>
+              ) : (
+                paginatedTasks.map((task, index) => {
+                  const isSelected = editingId === task.id
+                  const isRowDeleting =
+                    actionLoading?.type === 'delete' &&
+                    actionLoading.id === task.id
+                  const isRowAssigning =
+                    actionLoading?.type === 'assign' &&
+                    actionLoading.id === task.id
+                  const isRowEditing =
+                    actionLoading?.type === 'edit' &&
+                    actionLoading.id === task.id
+                  const sequenceNumber = (currentPage - 1) * pageSize + index + 1
 
-                return (
-                  <article
-                    key={task.id}
-                    className={`rounded-xl border p-4 transition-colors ${isSelected ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-white'}`}
-                  >
-                    <div className="mb-3 flex items-start justify-between gap-2">
-                      <p className="text-xs font-medium text-slate-500">
-                        #{sequenceNumber} · Task ID {task.id}
-                      </p>
-                      <StatusBadge status={task.status} />
-                    </div>
-
-                    <h2 className="mb-1 font-semibold text-slate-900">
-                      {task.name}
-                    </h2>
-                    {task.description && (
-                      <p className="mb-2 text-sm text-slate-600">
-                        {task.description}
-                      </p>
-                    )}
-                    <p className="text-xs text-slate-500">
-                      Updated: {formatDate(task.updatedAt)}
-                    </p>
-
-                    {canAssign && (
-                      <div className="mt-3">
-                        <label className="mb-1 block text-xs font-medium text-slate-500">
-                          Assign to
-                        </label>
-                        <AssignToSelect
-                          task={task}
-                          isRowAssigning={isRowAssigning}
-                          isRowDeleting={isRowDeleting}
-                        />
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(task)}
-                        disabled={isRowDeleting || isRowEditing || isSavingEdit}
-                        aria-busy={isRowEditing}
-                        className={editActionBtnClass}
-                      >
-                        {isRowEditing && (
-                          <Spinner size="sm" label="Saving task" />
-                        )}
-                        Edit
-                      </button>
-                      {canDeleteTask && (
-                      <button
-                        type="button"
-                        onClick={() => requestDelete(task.id, task.name)}
-                        disabled={isRowDeleting || isRowEditing || isSavingEdit}
-                        aria-busy={isRowDeleting}
-                        className={deleteActionBtnClass}
-                      >
-                        {isRowDeleting && (
-                          <Spinner size="sm" label="Deleting task" />
-                        )}
-                        Delete
-                      </button>
-                      )}
-                    </div>
-                  </article>
-                )
-              })
-            )}
-
-            {tasks.length > 0 && (
-              <TablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                totalItems={sortedTasks.length}
-                pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={handlePageSizeChange}
-              />
-            )}
-          </div>
-
-          <div className="hidden rounded-xl border border-slate-200 md:block">
-            <table className="w-full table-fixed text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                <tr>
-                  <th className="w-[3rem] whitespace-nowrap px-3 py-3 sm:px-4">
-                    #
-                  </th>
-                  <SortableHeader
-                    label="ID"
-                    sortKey="id"
-                    currentSort={sortState}
-                    onSort={handleSort}
-                    className="w-[3.5rem] whitespace-nowrap px-3 py-3 sm:px-4"
-                  />
-                  <SortableHeader
-                    label="Name"
-                    sortKey="name"
-                    currentSort={sortState}
-                    onSort={handleSort}
-                    className="w-[18%] px-3 py-3 sm:px-4"
-                  />
-                  <SortableHeader
-                    label="Description"
-                    sortKey="description"
-                    currentSort={sortState}
-                    onSort={handleSort}
-                    className="hidden w-[22%] px-3 py-3 lg:table-cell sm:px-4"
-                  />
-                  <SortableHeader
-                    label="Status"
-                    sortKey="status"
-                    currentSort={sortState}
-                    onSort={handleSort}
-                    className="w-[7.5rem] whitespace-nowrap px-3 py-3 sm:px-4"
-                  />
-                  <SortableHeader
-                    label="Created"
-                    sortKey="createdAt"
-                    currentSort={sortState}
-                    onSort={handleSort}
-                    className="hidden w-[11rem] whitespace-nowrap px-3 py-3 lg:table-cell sm:px-4"
-                  />
-                  <SortableHeader
-                    label="Updated"
-                    sortKey="updatedAt"
-                    currentSort={sortState}
-                    onSort={handleSort}
-                    className="hidden w-[11rem] whitespace-nowrap px-3 py-3 xl:table-cell sm:px-4"
-                  />
-                  {canAssign && (
-                    <th className="hidden w-[10rem] whitespace-nowrap px-3 py-3 lg:table-cell sm:px-4">
-                      Assign to
-                    </th>
-                  )}
-                  <th className="w-[9.5rem] whitespace-nowrap px-3 py-3 text-right sm:px-4">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {tasks.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={canAssign ? 9 : 8}
-                      className="px-4 py-12 text-center text-slate-500"
+                  return (
+                    <article
+                      key={task.id}
+                      className={`rounded-xl border p-4 transition-colors ${isSelected ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-white'}`}
                     >
-                      {emptyMessage}
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedTasks.map((task, index) => {
-                    const isSelected = editingId === task.id
-                    const isRowDeleting =
-                      actionLoading?.type === 'delete' &&
-                      actionLoading.id === task.id
-                    const isRowAssigning =
-                      actionLoading?.type === 'assign' &&
-                      actionLoading.id === task.id
-                    const isRowEditing =
-                      actionLoading?.type === 'edit' &&
-                      actionLoading.id === task.id
-                    const sequenceNumber = (currentPage - 1) * pageSize + index + 1
+                      <div className="mb-3 flex items-start justify-between gap-2">
+                        <p className="text-xs font-medium text-slate-500">
+                          #{sequenceNumber} · Task ID {task.id}
+                        </p>
+                        <StatusBadge status={task.status} />
+                      </div>
 
-                    return (
-                      <tr
-                        key={task.id}
-                        className={`transition-colors hover:bg-slate-50/80 ${isSelected ? 'bg-blue-50/40' : ''}`}
-                      >
-                        <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-500 sm:px-4">
-                          {sequenceNumber}
-                        </td>
+                      <h2 className="mb-1 font-semibold text-slate-900">
+                        {task.name}
+                      </h2>
+                      {task.description && (
+                        <p className="mb-2 text-sm text-slate-600">
+                          {task.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-slate-500">
+                        Updated: {formatDate(task.updatedAt)}
+                      </p>
 
-                        <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-700 sm:px-4">
-                          {task.id}
-                        </td>
+                      {canAssign && (
+                        <div className="mt-3">
+                          <label className="mb-1 block text-xs font-medium text-slate-500">
+                            Assign to
+                          </label>
+                          <AssignToSelect
+                            task={task}
+                            isRowAssigning={isRowAssigning}
+                            isRowDeleting={isRowDeleting}
+                          />
+                        </div>
+                      )}
 
-                        <td className="px-3 py-3 sm:px-4">
-                          <span className="block truncate font-medium text-slate-900">
-                            {task.name}
-                          </span>
-                        </td>
-
-                        <td className="hidden px-3 py-3 lg:table-cell sm:px-4">
-                          <span
-                            className="block truncate text-slate-600"
-                            title={task.description ?? undefined}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(task)}
+                          disabled={isRowDeleting || isRowEditing || isSavingEdit}
+                          aria-busy={isRowEditing}
+                          className={editActionBtnClass}
+                        >
+                          {isRowEditing && (
+                            <Spinner size="sm" label="Saving task" />
+                          )}
+                          Edit
+                        </button>
+                        {canDeleteTask && (
+                          <button
+                            type="button"
+                            onClick={() => requestDelete(task.id, task.name)}
+                            disabled={isRowDeleting || isRowEditing || isSavingEdit}
+                            aria-busy={isRowDeleting}
+                            className={deleteActionBtnClass}
                           >
-                            {task.description || '—'}
-                          </span>
-                        </td>
-
-                        <td className="whitespace-nowrap px-3 py-3 sm:px-4">
-                          <StatusBadge status={task.status} />
-                        </td>
-
-                        <td className="hidden px-3 py-3 text-xs text-slate-500 lg:table-cell sm:px-4">
-                          {formatDate(task.createdAt)}
-                        </td>
-
-                        <td className="hidden px-3 py-3 text-xs text-slate-500 xl:table-cell sm:px-4">
-                          {formatDate(task.updatedAt)}
-                        </td>
-
-                        {canAssign && (
-                          <td className="hidden px-3 py-3 lg:table-cell sm:px-4">
-                            <AssignToSelect
-                              task={task}
-                              isRowAssigning={isRowAssigning}
-                              isRowDeleting={isRowDeleting}
-                            />
-                          </td>
-                        )}
-
-                        <td className="whitespace-nowrap px-3 py-3 sm:px-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => startEdit(task)}
-                              disabled={isRowDeleting || isRowEditing || isSavingEdit}
-                              aria-label={`Edit task ${task.id}`}
-                              aria-busy={isRowEditing}
-                              className={editActionBtnClass}
-                            >
-                              {isRowEditing && (
-                                <Spinner size="sm" label="Saving task" />
-                              )}
-                              Edit
-                            </button>
-                            {canDeleteTask && (
-                            <button
-                              type="button"
-                              onClick={() => requestDelete(task.id, task.name)}
-                              disabled={isRowDeleting || isRowEditing || isSavingEdit}
-                              aria-label={`Delete task ${task.id}`}
-                              aria-busy={isRowDeleting}
-                              className={deleteActionBtnClass}
-                            >
-                              {isRowDeleting && (
-                                <Spinner size="sm" label="Deleting task" />
-                              )}
-                              Delete
-                            </button>
+                            {isRowDeleting && (
+                              <Spinner size="sm" label="Deleting task" />
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  )
+                })
+              )}
 
-            {tasks.length > 0 && (
-              <TablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                totalItems={sortedTasks.length}
-                pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={handlePageSizeChange}
-              />
-            )}
-          </div>
-        </>
+              {tasks.length > 0 && (
+                <TablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  totalItems={sortedTasks.length}
+                  pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={handlePageSizeChange}
+                />
+              )}
+            </div>
+
+            <div className="hidden rounded-xl border border-slate-200 md:block">
+              <table className="w-full table-fixed text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <tr>
+                    <th className="w-[3rem] whitespace-nowrap px-3 py-3 sm:px-4">
+                      #
+                    </th>
+                    <SortableHeader
+                      label="ID"
+                      sortKey="id"
+                      currentSort={sortState}
+                      onSort={handleSort}
+                      className="w-[3.5rem] whitespace-nowrap px-3 py-3 sm:px-4"
+                    />
+                    <SortableHeader
+                      label="Name"
+                      sortKey="name"
+                      currentSort={sortState}
+                      onSort={handleSort}
+                      className="w-[18%] px-3 py-3 sm:px-4"
+                    />
+                    <SortableHeader
+                      label="Description"
+                      sortKey="description"
+                      currentSort={sortState}
+                      onSort={handleSort}
+                      className="hidden w-[22%] px-3 py-3 lg:table-cell sm:px-4"
+                    />
+                    <SortableHeader
+                      label="Status"
+                      sortKey="status"
+                      currentSort={sortState}
+                      onSort={handleSort}
+                      className="w-[7.5rem] whitespace-nowrap px-3 py-3 sm:px-4"
+                    />
+                    <SortableHeader
+                      label="Created"
+                      sortKey="createdAt"
+                      currentSort={sortState}
+                      onSort={handleSort}
+                      className="hidden w-[11rem] whitespace-nowrap px-3 py-3 lg:table-cell sm:px-4"
+                    />
+                    <SortableHeader
+                      label="Updated"
+                      sortKey="updatedAt"
+                      currentSort={sortState}
+                      onSort={handleSort}
+                      className="hidden w-[11rem] whitespace-nowrap px-3 py-3 xl:table-cell sm:px-4"
+                    />
+                    {canAssign && (
+                      <th className="hidden w-[10rem] whitespace-nowrap px-3 py-3 lg:table-cell sm:px-4">
+                        Assign to
+                      </th>
+                    )}
+                    <th className="w-[9.5rem] whitespace-nowrap px-3 py-3 text-right sm:px-4">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {tasks.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={canAssign ? 9 : 8}
+                        className="px-4 py-12 text-center text-slate-500"
+                      >
+                        {emptyMessage}
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedTasks.map((task, index) => {
+                      const isSelected = editingId === task.id
+                      const isRowDeleting =
+                        actionLoading?.type === 'delete' &&
+                        actionLoading.id === task.id
+                      const isRowAssigning =
+                        actionLoading?.type === 'assign' &&
+                        actionLoading.id === task.id
+                      const isRowEditing =
+                        actionLoading?.type === 'edit' &&
+                        actionLoading.id === task.id
+                      const sequenceNumber = (currentPage - 1) * pageSize + index + 1
+
+                      return (
+                        <tr
+                          key={task.id}
+                          className={`transition-colors hover:bg-slate-50/80 ${isSelected ? 'bg-blue-50/40' : ''}`}
+                        >
+                          <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-500 sm:px-4">
+                            {sequenceNumber}
+                          </td>
+
+                          <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-700 sm:px-4">
+                            {task.id}
+                          </td>
+
+                          <td className="px-3 py-3 sm:px-4">
+                            <span className="block truncate font-medium text-slate-900">
+                              {task.name}
+                            </span>
+                          </td>
+
+                          <td className="hidden px-3 py-3 lg:table-cell sm:px-4">
+                            <span
+                              className="block truncate text-slate-600"
+                              title={task.description ?? undefined}
+                            >
+                              {task.description || '—'}
+                            </span>
+                          </td>
+
+                          <td className="whitespace-nowrap px-3 py-3 sm:px-4">
+                            <StatusBadge status={task.status} />
+                          </td>
+
+                          <td className="hidden px-3 py-3 text-xs text-slate-500 lg:table-cell sm:px-4">
+                            {formatDate(task.createdAt)}
+                          </td>
+
+                          <td className="hidden px-3 py-3 text-xs text-slate-500 xl:table-cell sm:px-4">
+                            {formatDate(task.updatedAt)}
+                          </td>
+
+                          {canAssign && (
+                            <td className="hidden px-3 py-3 lg:table-cell sm:px-4">
+                              <AssignToSelect
+                                task={task}
+                                isRowAssigning={isRowAssigning}
+                                isRowDeleting={isRowDeleting}
+                              />
+                            </td>
+                          )}
+
+                          <td className="whitespace-nowrap px-3 py-3 sm:px-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startEdit(task)}
+                                disabled={isRowDeleting || isRowEditing || isSavingEdit}
+                                aria-label={`Edit task ${task.id}`}
+                                aria-busy={isRowEditing}
+                                className={editActionBtnClass}
+                              >
+                                {isRowEditing && (
+                                  <Spinner size="sm" label="Saving task" />
+                                )}
+                                Edit
+                              </button>
+                              {canDeleteTask && (
+                                <button
+                                  type="button"
+                                  onClick={() => requestDelete(task.id, task.name)}
+                                  disabled={isRowDeleting || isRowEditing || isSavingEdit}
+                                  aria-label={`Delete task ${task.id}`}
+                                  aria-busy={isRowDeleting}
+                                  className={deleteActionBtnClass}
+                                >
+                                  {isRowDeleting && (
+                                    <Spinner size="sm" label="Deleting task" />
+                                  )}
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+
+              {tasks.length > 0 && (
+                <TablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  totalItems={sortedTasks.length}
+                  pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={handlePageSizeChange}
+                />
+              )}
+            </div>
+          </>
         </div>
       )}
 
       {canDeleteTask && (
-      <DeleteDialog
-        open={deleteTarget !== null}
-        taskName={deleteTarget?.name ?? ''}
-        onConfirm={confirmDelete}
-        onCancel={() => {
-          if (!isDeleting) {
-            setDeleteTarget(null)
-          }
-        }}
-        isDeleting={isDeleting}
-      />
+        <DeleteDialog
+          open={deleteTarget !== null}
+          taskName={deleteTarget?.name ?? ''}
+          onConfirm={confirmDelete}
+          onCancel={() => {
+            if (!isDeleting) {
+              setDeleteTarget(null)
+            }
+          }}
+          isDeleting={isDeleting}
+        />
       )}
     </div>
   )

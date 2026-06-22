@@ -47,9 +47,17 @@ public class UsersController : ControllerBase
 
     [HttpGet("assignable")]
     [Authorize(Roles = "Admin,ProjectManager")]
-    public async Task<ActionResult<IEnumerable<UserDto>>> GetAssignableUsers(CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetAssignableUsers(
+        [FromQuery] string? search,
+        [FromQuery] int limit = 0,
+        CancellationToken cancellationToken = default)
     {
-        return Ok(await _userService.GetAssignableUsersAsync(cancellationToken));
+        if (string.IsNullOrWhiteSpace(search) && limit <= 0)
+        {
+            return Ok(await _userService.GetAssignableUsersAsync(cancellationToken));
+        }
+
+        return Ok(await _userService.SearchAssignableUsersAsync(search, limit, cancellationToken));
     }
 
     [HttpGet]
