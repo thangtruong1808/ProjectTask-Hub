@@ -16,6 +16,7 @@ import { getProjects, getProjectAssignableUsers, type ProjectItem } from '../api
 import type { UserDto } from '../api/client'
 import type { RootState } from '../store'
 import DeleteDialog from './DeleteDialog'
+import TasksWelcomeSection from './tasks/TasksWelcomeSection'
 import { CharacterCount, FieldError, fieldErrorClass } from './FormFieldHelpers'
 import InlineMessage from './InlineMessage'
 import ProjectMembersPanel from './ProjectMembersPanel'
@@ -861,7 +862,10 @@ export default function TodoList() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden">
+      <TasksWelcomeSection isLoading={loading && tasks.length === 0} />
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Task List</h1>
@@ -1299,9 +1303,16 @@ export default function TodoList() {
       )}
 
       {loading && tasks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 py-16">
-          <Spinner size="lg" label="Loading tasks" />
-          <p className="text-sm text-slate-500">Loading tasks...</p>
+        <div
+          className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50/50 py-14"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 ring-4 ring-blue-50/60">
+            <Spinner size="lg" label="Loading tasks" />
+          </span>
+          <p className="text-sm font-medium text-slate-700">Preparing your task list...</p>
+          <p className="text-xs text-slate-400">This will only take a moment</p>
         </div>
       ) : (
         <div className="relative">
@@ -1621,6 +1632,7 @@ export default function TodoList() {
           isDeleting={isDeleting}
         />
       )}
+      </div>
     </div>
   )
 }

@@ -50,7 +50,6 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthCard
-      icon={<LockIcon size={28} />}
       title="Reset password"
       subtitle="Enter your reset token and choose a new password."
       footer={

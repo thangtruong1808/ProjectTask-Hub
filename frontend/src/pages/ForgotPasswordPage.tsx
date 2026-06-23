@@ -30,7 +30,6 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthCard
-      icon={<KeyIcon size={28} />}
       title="Forgot password"
       subtitle="Enter your email and we'll provide a reset token (dev mode)."
       footer={

@@ -34,7 +34,6 @@ export default function LoginPage() {
 
   return (
     <AuthCard
-      icon={<LoginIcon size={28} />}
       title="Welcome back"
       subtitle="Sign in to manage your tasks and notifications."
       footer={

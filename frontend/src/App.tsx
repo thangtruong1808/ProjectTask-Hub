@@ -18,8 +18,8 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 
 function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50 px-4 py-10 sm:py-14">
-      {children}
+    <div className="flex min-h-screen flex-col items-center justify-center overflow-x-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50 px-4 py-10 sm:py-14">
+      <div className="w-full min-w-0">{children}</div>
     </div>
   )
 }

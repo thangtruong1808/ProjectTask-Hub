@@ -75,9 +75,8 @@ export default function RegisterPage() {
   return (
     <AuthCard
       wide
-      icon={<UserPlusIcon size={28} />}
       title="Create account"
-      subtitle="Join TodoList — choose a role to explore the full portfolio demo."
+      subtitle="Join ProjectTask-Hub — choose a role to explore the full portfolio demo."
       footer={
         <span>
           Already have an account?{' '}
