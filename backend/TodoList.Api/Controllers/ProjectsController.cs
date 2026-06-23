@@ -149,7 +149,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpGet("{id:long}/assignable-users")]
-    [Authorize(Roles = "ProjectManager")]
+    [Authorize(Roles = "Admin,ProjectManager")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetAssignableUsers(long id, CancellationToken cancellationToken)
     {
         try

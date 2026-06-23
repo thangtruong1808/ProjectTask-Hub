@@ -227,7 +227,7 @@ public class ProjectService : IProjectService
             DateTime.UtcNow,
             cancellationToken);
 
-        if (assigned && user.Role == UserRole.User)
+        if (assigned && user.Role is UserRole.User or UserRole.ProjectManager)
         {
             var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
             var assigner = await _userRepository.GetByIdAsync(_currentUser.UserId.Value, cancellationToken);
@@ -256,15 +256,28 @@ public class ProjectService : IProjectService
             return false;
         }
 
+        if (_currentUser.IsAdmin && userId == _currentUser.UserId)
+        {
+            throw new ArgumentException("You cannot remove yourself from the project.");
+        }
+
         if (_currentUser.IsProjectManager && !_currentUser.IsAdmin && userId == _currentUser.UserId)
         {
             throw new ArgumentException("You cannot remove yourself from the project.");
         }
 
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
-        if (_currentUser.IsProjectManager && !_currentUser.IsAdmin && user?.Role is not UserRole.User)
+        if (_currentUser.IsProjectManager && !_currentUser.IsAdmin)
         {
-            throw new ArgumentException("Project managers can only remove users from the project team.");
+            if (user?.Role is UserRole.Admin)
+            {
+                throw new ArgumentException("Project managers cannot remove admins from the project team.");
+            }
+
+            if (user?.Role is not UserRole.User)
+            {
+                throw new ArgumentException("Project managers can only remove users from the project team.");
+            }
         }
 
         return await _projectRepository.RemoveMemberAsync(projectId, userId, cancellationToken);
@@ -272,9 +285,14 @@ public class ProjectService : IProjectService
 
     public async Task<IReadOnlyList<UserDto>> GetAssignableUsersForProjectAsync(long projectId, CancellationToken cancellationToken = default)
     {
-        if (!_currentUser.IsProjectManager || !_currentUser.UserId.HasValue)
+        if (!_currentUser.IsAdmin && !_currentUser.IsProjectManager)
         {
-            throw new UnauthorizedAccessException("Only project managers can list assignable users.");
+            throw new UnauthorizedAccessException("Only admins and project managers can list assignable users.");
+        }
+
+        if (!_currentUser.UserId.HasValue)
+        {
+            return [];
         }
 
         if (!await _projectRepository.ExistsActiveAsync(projectId, cancellationToken))
@@ -282,7 +300,8 @@ public class ProjectService : IProjectService
             return [];
         }
 
-        if (!await _projectRepository.IsMemberAsync(projectId, _currentUser.UserId.Value, cancellationToken))
+        if (_currentUser.IsProjectManager && !_currentUser.IsAdmin
+            && !await _projectRepository.IsMemberAsync(projectId, _currentUser.UserId.Value, cancellationToken))
         {
             throw new UnauthorizedAccessException("You are not assigned to this project.");
         }
@@ -364,7 +383,19 @@ public class ProjectService : IProjectService
             return await _projectRepository.ExistsActiveAsync(projectId, cancellationToken);
         }
 
-        return await CanManageProjectAsync(projectId, cancellationToken);
+        if (!_currentUser.IsProjectManager || !_currentUser.UserId.HasValue)
+        {
+            return false;
+        }
+
+        if (!await _projectRepository.ExistsActiveAsync(projectId, cancellationToken))
+        {
+            return false;
+        }
+
+        var userId = _currentUser.UserId.Value;
+        return await _projectRepository.IsMemberAsync(projectId, userId, cancellationToken)
+            || await _projectRepository.IsAccessibleByPmAsync(projectId, userId, cancellationToken);
     }
 
     private void EnsureAdmin()

@@ -174,18 +174,24 @@ public class TaskService : ITaskService
 
     public async Task<bool> AssignAsync(long id, AssignTaskRequest request, CancellationToken cancellationToken = default)
     {
-        if (!_currentUser.IsProjectManager || !_currentUser.UserId.HasValue)
+        if (!_currentUser.IsAdmin && !_currentUser.IsProjectManager)
         {
-            throw new UnauthorizedAccessException("Only project managers can assign tasks.");
+            throw new UnauthorizedAccessException("Only admins and project managers can assign tasks.");
         }
 
-        var task = await _taskRepository.GetByIdAsync(id, cancellationToken);
-        if (task is null)
+        if (!_currentUser.UserId.HasValue)
         {
             return false;
         }
 
-        if (!await _projectRepository.IsMemberAsync(task.ProjectId, _currentUser.UserId.Value, cancellationToken))
+        var task = await _taskRepository.GetByIdAsync(id, cancellationToken);
+        if (task is null || !await CanAccessTaskAsync(task, cancellationToken))
+        {
+            return false;
+        }
+
+        if (_currentUser.IsProjectManager && !_currentUser.IsAdmin
+            && !await _projectRepository.IsMemberAsync(task.ProjectId, _currentUser.UserId.Value, cancellationToken))
         {
             throw new UnauthorizedAccessException("You are not assigned to this project.");
         }

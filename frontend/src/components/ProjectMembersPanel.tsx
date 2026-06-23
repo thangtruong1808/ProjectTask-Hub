@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
 import type { UserDto, UserRole } from '../api/client'
+import type { RootState } from '../store'
 import {
   assignProjectMember,
   getProjectMembers,
@@ -9,6 +11,7 @@ import {
   type ProjectMemberItem,
 } from '../api/projects'
 import { FolderIcon, UserPlusIcon, UsersIcon, XMarkIcon } from './icons/Icons'
+import InlineMessage from './InlineMessage'
 import Spinner from './Spinner'
 import UserSearchPicker from './UserSearchPicker'
 
@@ -18,6 +21,8 @@ interface ProjectMembersPanelProps {
   assignableUsers?: UserDto[]
   onMembersChanged?: () => void
 }
+
+const SUCCESS_DISMISS_MS = 4000
 
 const MEMBER_ROLE_STYLES: Record<UserRole, string> = {
   User: 'bg-slate-100 text-slate-600',
@@ -40,22 +45,49 @@ function formatAssignedAt(value: string) {
   })
 }
 
+function canRemoveMember(
+  member: ProjectMemberItem,
+  currentUserId: number | undefined,
+  currentUserRole: UserRole | undefined,
+): boolean {
+  if (!currentUserId || !currentUserRole) {
+    return false
+  }
+
+  if (currentUserRole === 'Admin') {
+    return member.userId !== currentUserId
+  }
+
+  if (currentUserRole === 'ProjectManager') {
+    if (member.userId === currentUserId) {
+      return false
+    }
+
+    return member.role === 'User'
+  }
+
+  return false
+}
+
 export default function ProjectMembersPanel({
   projectId,
   projectLabel,
   onMembersChanged,
 }: ProjectMembersPanelProps) {
+  const currentUser = useSelector((s: RootState) => s.auth.user)
   const [members, setMembers] = useState<ProjectMemberItem[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<UserDto | null>(null)
   const [assigning, setAssigning] = useState(false)
   const [removingUserId, setRemovingUserId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
+    setSuccessMessage(null)
     setSelectedUser(null)
     getProjectMembers(projectId)
       .then((data) => {
@@ -72,19 +104,39 @@ export default function ProjectMembersPanel({
     }
   }, [projectId])
 
+  useEffect(() => {
+    if (!successMessage) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setSuccessMessage(null)
+    }, SUCCESS_DISMISS_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [successMessage])
+
   const memberIds = members.map((m) => m.userId)
+
+  function showSuccess(message: string) {
+    setSuccessMessage(message)
+    setError(null)
+  }
 
   async function handleAssign() {
     if (!selectedUser) return
+    const assignedUser = selectedUser
     setAssigning(true)
     setError(null)
     try {
-      await assignProjectMember(projectId, selectedUser.id)
+      await assignProjectMember(projectId, assignedUser.id)
       const data = await getProjectMembers(projectId)
       setMembers(data)
       setSelectedUser(null)
       onMembersChanged?.()
+      showSuccess(`"${memberDisplayName(assignedUser)}" added to project team successfully.`)
     } catch (err) {
+      setSuccessMessage(null)
       setError(err instanceof Error ? err.message : 'Could not assign user to project.')
     } finally {
       setAssigning(false)
@@ -92,13 +144,20 @@ export default function ProjectMembersPanel({
   }
 
   async function handleRemove(userId: number) {
+    const removedMember = members.find((member) => member.userId === userId)
     setRemovingUserId(userId)
     setError(null)
     try {
       await removeProjectMember(projectId, userId)
       setMembers((current) => current.filter((m) => m.userId !== userId))
       onMembersChanged?.()
+      if (removedMember) {
+        showSuccess(`"${memberDisplayName(removedMember)}" removed from project team successfully.`)
+      } else {
+        showSuccess('User removed from project team successfully.')
+      }
     } catch (err) {
+      setSuccessMessage(null)
       setError(err instanceof Error ? err.message : 'Could not remove user from project.')
     } finally {
       setRemovingUserId(null)
@@ -118,16 +177,28 @@ export default function ProjectMembersPanel({
         </span>
       </div>
 
+      {successMessage && (
+        <InlineMessage
+          variant="success"
+          message={successMessage}
+          onDismiss={() => setSuccessMessage(null)}
+        />
+      )}
+
       {error && (
-        <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-          {error}
-        </p>
+        <InlineMessage
+          variant="error"
+          message={error}
+          onDismiss={() => setError(null)}
+        />
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
-          <Spinner size="sm" label="Loading project members" />
-          Loading members...
+        <div className="flex min-h-[5rem] items-center justify-center py-4">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm">
+            <Spinner size="sm" label="Loading project members" />
+            Loading members...
+          </span>
         </div>
       ) : (
         <>
@@ -135,10 +206,15 @@ export default function ProjectMembersPanel({
             <p className="mb-3 text-sm text-slate-500">No users assigned to this project yet.</p>
           ) : (
             <ul className="mb-3 space-y-2">
-              {members.map((member) => (
+              {members.map((member) => {
+                const isRemoving = removingUserId === member.userId
+                const showRemove = canRemoveMember(member, currentUser?.id, currentUser?.role)
+
+                return (
                 <li
                   key={member.userId}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white bg-white px-3 py-2 shadow-sm"
+                  aria-busy={isRemoving}
                 >
                   <div className="min-w-0">
                     <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-medium text-slate-900">
@@ -155,23 +231,31 @@ export default function ProjectMembersPanel({
                     <span className="hidden text-xs text-slate-400 sm:inline">
                       {formatAssignedAt(member.assignedAt)}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(member.userId)}
-                      disabled={removingUserId === member.userId}
-                      className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-70"
-                      aria-label={`Remove ${memberDisplayName(member)}`}
-                    >
-                      {removingUserId === member.userId ? (
-                        <Spinner size="sm" label="Removing member" />
-                      ) : (
-                        <XMarkIcon size={13} />
-                      )}
-                      Remove
-                    </button>
+                    {showRemove && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(member.userId)}
+                        disabled={isRemoving}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+                        aria-label={`Remove ${memberDisplayName(member)}`}
+                      >
+                        {isRemoving ? (
+                          <>
+                            <Spinner size="sm" label="Removing member" />
+                            Removing...
+                          </>
+                        ) : (
+                          <>
+                            <XMarkIcon size={13} />
+                            Remove
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
 

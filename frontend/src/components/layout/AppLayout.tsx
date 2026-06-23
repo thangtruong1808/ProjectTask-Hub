@@ -48,12 +48,12 @@ export default function AppLayout() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-lg font-semibold text-slate-900"
+            className="inline-flex min-w-0 items-center gap-2 text-lg font-semibold text-slate-900"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
               <ClipboardIcon size={18} />
             </span>
-            TodoList
+            <span className="truncate sm:max-w-none">ProjectTask-Hub</span>
           </Link>
 
           <nav className="flex flex-wrap items-center gap-1">

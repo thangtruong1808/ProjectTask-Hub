@@ -84,7 +84,7 @@ public class TodosController : ControllerBase
     }
 
     [HttpPost("{id:long}/assign")]
-    [Authorize(Roles = "ProjectManager")]
+    [Authorize(Roles = "Admin,ProjectManager")]
     public async Task<IActionResult> AssignTodo(long id, AssignTaskRequest request, CancellationToken cancellationToken)
     {
         try

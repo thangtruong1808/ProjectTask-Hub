@@ -21,7 +21,7 @@ import InlineMessage from './InlineMessage'
 import ProjectMembersPanel from './ProjectMembersPanel'
 import Spinner from './Spinner'
 import TablePagination from './TablePagination'
-import { MagnifyingGlassIcon, PlusIcon, XMarkIcon } from './icons/Icons'
+import { FolderIcon, MagnifyingGlassIcon, PlusIcon, XMarkIcon } from './icons/Icons'
 import {
   TASK_DESCRIPTION_MAX_LENGTH,
   TASK_NAME_MAX_LENGTH,
@@ -234,7 +234,7 @@ export default function TodoList() {
   const canEditTaskDetails = isAdmin || isProjectManager
   const canCreateTask = isAdmin || isProjectManager
   const canDeleteTask = isAdmin || isProjectManager
-  const canAssign = isProjectManager
+  const canAssign = isAdmin || isProjectManager
 
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [searchInput, setSearchInput] = useState('')
@@ -304,6 +304,25 @@ export default function TodoList() {
     () => (projectFilter === '' ? null : projects.find((p) => p.id === projectFilter) ?? null),
     [projectFilter, projects],
   )
+
+  const editingTask = useMemo(
+    () => (editingId === null ? null : tasks.find((task) => task.id === editingId) ?? null),
+    [editingId, tasks],
+  )
+
+  const editingProjectLabel = useMemo(() => {
+    if (!editingTask) {
+      return null
+    }
+
+    const project = projects.find((item) => item.id === editingTask.projectId)
+    if (project) {
+      return project.code ? `${project.code} — ${project.name}` : project.name
+    }
+
+    const fallbackName = editingTask.projectName?.trim()
+    return fallbackName || `Project #${editingTask.projectId}`
+  }, [editingTask, projects])
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -410,7 +429,7 @@ export default function TodoList() {
   }, [canManageProjectTeam])
 
   useEffect(() => {
-    if (!isProjectManager) {
+    if (!canAssign) {
       assignableLoadStarted.current.clear()
       setProjectAssignableUsers({})
       setAssignableLoadingByProject({})
@@ -424,10 +443,10 @@ export default function TodoList() {
     projects.forEach((project) => {
       void ensureAssignableLoaded(project.id)
     })
-  }, [isProjectManager, projects])
+  }, [canAssign, projects])
 
   useEffect(() => {
-    if (!isProjectManager || tasks.length === 0) {
+    if (!canAssign || tasks.length === 0) {
       return
     }
 
@@ -439,7 +458,7 @@ export default function TodoList() {
     projectIds.forEach((projectId) => {
       void ensureAssignableLoaded(projectId)
     })
-  }, [isProjectManager, tasks, projectFilter])
+  }, [canAssign, tasks, projectFilter])
 
   async function ensureAssignableLoaded(projectId: number) {
     const id = Number(projectId)
@@ -550,6 +569,25 @@ export default function TodoList() {
       setError('Could not load tasks. Check that the API is running.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function refreshTasksAfterTeamChange() {
+    setRefreshing(true)
+    try {
+      const data = await getTodos({
+        search: searchQuery || undefined,
+        status: statusFilter || undefined,
+        projectId: projectFilter || undefined,
+      })
+      setTasks(data)
+      if (editingId !== null && !data.some((task) => task.id === editingId)) {
+        resetTaskForm()
+      }
+    } catch {
+      // Keep existing table data if background refresh fails.
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -982,7 +1020,10 @@ export default function TodoList() {
                 : selectedProject.name
             }
             assignableUsers={assignableUsers}
-            onMembersChanged={() => refreshAssignableForProject(projectFilter)}
+            onMembersChanged={() => {
+              refreshAssignableForProject(projectFilter)
+              void refreshTasksAfterTeamChange()
+            }}
           />
         </div>
       )}
@@ -997,13 +1038,19 @@ export default function TodoList() {
             }`}
         >
           {isEditing ? (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-slate-900">
                   Editing Task #{editingId}
                 </p>
+                {editingProjectLabel && (
+                  <p className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-100 bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                    <FolderIcon size={14} className="shrink-0 text-blue-600" />
+                    <span className="truncate">{editingProjectLabel}</span>
+                  </p>
+                )}
                 {isNameDescriptionReadOnly && (
-                  <p className="mt-0.5 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500">
                     Task name and description are read-only. You can update status only.
                   </p>
                 )}
