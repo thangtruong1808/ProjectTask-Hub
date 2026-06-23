@@ -5,6 +5,7 @@ import { ClipboardIcon } from '../icons/Icons'
 interface AuthCardProps {
   title: string
   subtitle?: string
+  titleIcon?: ReactNode
   children: ReactNode
   footer?: ReactNode
   wide?: boolean
@@ -13,6 +14,7 @@ interface AuthCardProps {
 export default function AuthCard({
   title,
   subtitle,
+  titleIcon,
   children,
   footer,
   wide = false,
@@ -32,14 +34,17 @@ export default function AuthCard({
             <span className="block text-lg font-semibold tracking-tight text-slate-900 transition-colors group-hover:text-blue-700">
               ProjectTask-Hub
             </span>
-            <span className="block text-xs text-slate-500">
-              Task & project management
-            </span>
+            <span className="block text-xs text-slate-500">Task & project management</span>
           </span>
         </Link>
 
         <div className="mb-6 border-t border-slate-100 pt-6 text-center">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+          <h1 className="inline-flex items-center justify-center gap-2 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+            {titleIcon && (
+              <span className="inline-flex text-blue-600" aria-hidden="true">
+                {titleIcon}
+              </span>
+            )}
             {title}
           </h1>
           {subtitle && (

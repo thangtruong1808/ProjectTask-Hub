@@ -9,11 +9,12 @@ import {
   UserIcon,
 } from '../components/icons/Icons'
 import InlineMessage from '../components/InlineMessage'
-import Spinner from '../components/Spinner'
 import { FormField } from '../components/ui/FormField'
 import PageHeader from '../components/ui/PageHeader'
+import PageLoadingPanel from '../components/ui/PageLoadingPanel'
 import SubmitButton from '../components/ui/SubmitButton'
 import { updateUser, type AppDispatch } from '../store'
+import { usePageDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function ProfilePage() {
   const dispatch = useDispatch<AppDispatch>()
@@ -30,6 +31,8 @@ export default function ProfilePage() {
   const [pwdSaving, setPwdSaving] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  usePageDocumentTitle('myProfile', loading)
 
   useEffect(() => {
     getProfile()
@@ -90,9 +93,13 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center gap-3 py-16">
-        <Spinner size="lg" label="Loading profile" />
-        <p className="text-sm text-slate-500">Loading profile...</p>
+      <div className="mx-auto max-w-lg space-y-6">
+        <PageHeader
+          icon={<ProfileIcon size={24} />}
+          title="My profile"
+          subtitle="Update your personal details and keep your account secure."
+        />
+        <PageLoadingPanel label="Loading profile..." hint="Fetching your account information" />
       </div>
     )
   }
@@ -101,8 +108,8 @@ export default function ProfilePage() {
     <div className="mx-auto max-w-lg space-y-6">
       <PageHeader
         icon={<ProfileIcon size={24} />}
-        title="Profile"
-        subtitle="Manage your personal information and account security."
+        title="My profile"
+        subtitle="Update your personal details and keep your account secure."
       />
 
       {success && <InlineMessage variant="success" message={success} onDismiss={() => setSuccess(null)} />}

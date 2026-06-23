@@ -6,12 +6,15 @@ import AlertMessage from '../components/ui/AlertMessage'
 import AuthCard from '../components/ui/AuthCard'
 import { FormField } from '../components/ui/FormField'
 import SubmitButton from '../components/ui/SubmitButton'
+import { usePageDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [result, setResult] = useState<{ message: string; resetToken?: string; resetUrl?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  usePageDocumentTitle('resetPassword', loading)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -30,8 +33,9 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthCard
-      title="Forgot password"
-      subtitle="Enter your email and we'll provide a reset token (dev mode)."
+      titleIcon={<KeyIcon size={20} />}
+      title="Reset password"
+      subtitle="Enter your email and we will help you regain access to your account."
       footer={
         <Link
           to="/login"

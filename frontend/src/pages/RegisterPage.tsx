@@ -16,6 +16,7 @@ import { FormField } from '../components/ui/FormField'
 import RoleSelector from '../components/ui/RoleSelector'
 import SubmitButton from '../components/ui/SubmitButton'
 import { setCredentials, type AppDispatch } from '../store'
+import { usePageDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function RegisterPage() {
   const dispatch = useDispatch<AppDispatch>()
@@ -32,6 +33,8 @@ export default function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  usePageDocumentTitle('createAccount', loading)
 
   function validateForm() {
     const errors: Record<string, string> = {}
@@ -75,8 +78,9 @@ export default function RegisterPage() {
   return (
     <AuthCard
       wide
+      titleIcon={<UserPlusIcon size={20} />}
       title="Create account"
-      subtitle="Join ProjectTask-Hub — choose a role to explore the full portfolio demo."
+      subtitle="Join ProjectTask-Hub and start collaborating with your team in minutes."
       footer={
         <span>
           Already have an account?{' '}

@@ -25,7 +25,7 @@ export default function Spinner({
       className={`inline-flex items-center justify-center ${className}`}
     >
       <span
-        className={`animate-spin rounded-full border-slate-300 border-t-blue-600 ${sizeClasses[size]}`}
+      className={`animate-spin shrink-0 rounded-full border-solid border-slate-300 border-t-blue-600 ${sizeClasses[size]}`}
       />
       <span className="sr-only">{label}</span>
     </span>

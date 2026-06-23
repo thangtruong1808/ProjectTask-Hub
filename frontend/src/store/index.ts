@@ -9,7 +9,24 @@ interface AuthState {
   user: UserDto | null
 }
 
+function canUseSessionStorage() {
+  try {
+    const probe = '__storage_probe__'
+    sessionStorage.setItem(probe, probe)
+    sessionStorage.removeItem(probe)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const storageAvailable = canUseSessionStorage()
+
 function loadAuth(): AuthState {
+  if (!storageAvailable) {
+    return { accessToken: null, refreshToken: null, user: null }
+  }
+
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return { accessToken: null, refreshToken: null, user: null }
@@ -20,10 +37,16 @@ function loadAuth(): AuthState {
 }
 
 function saveAuth(state: AuthState) {
-  if (state.accessToken && state.refreshToken && state.user) {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  } else {
-    sessionStorage.removeItem(STORAGE_KEY)
+  if (!storageAvailable) return
+
+  try {
+    if (state.accessToken && state.refreshToken && state.user) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    } else {
+      sessionStorage.removeItem(STORAGE_KEY)
+    }
+  } catch {
+    // Private browsing or blocked storage — keep in-memory session only.
   }
 }
 

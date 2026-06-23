@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux'
 import type { UserRole } from '../../api/client'
 import type { RootState } from '../../store'
 import { ClipboardIcon } from '../icons/Icons'
-import Spinner from '../Spinner'
+import LoadingBadge from '../ui/LoadingBadge'
 
 function getGreeting() {
   const hour = new Date().getHours()
@@ -79,14 +79,10 @@ export default function TasksWelcomeSection({ isLoading = false }: TasksWelcomeS
         </div>
 
         {isLoading && (
-          <span
-            className="inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm"
-            aria-live="polite"
-            aria-busy="true"
-          >
-            <Spinner size="sm" label={copy.loadingLabel} />
-            {copy.loadingLabel}
-          </span>
+          <LoadingBadge
+            label={copy.loadingLabel}
+            className="shrink-0 self-start gap-2"
+          />
         )}
       </div>
     </section>

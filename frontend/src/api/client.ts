@@ -1,5 +1,25 @@
-export const API_URL = import.meta.env.VITE_API_URL as string
-export const HUB_URL = API_URL.replace(/\/api\/?$/, '') + '/hubs/notifications'
+const DEFAULT_API_URL = 'http://localhost:5181/api'
+
+function normalizeApiUrl(value: string | undefined): string {
+  const trimmed = value?.trim()
+  if (!trimmed) return DEFAULT_API_URL
+  return trimmed.replace(/\/+$/, '')
+}
+
+function resolveHubUrl(apiUrl: string): string {
+  try {
+    const base = new URL(apiUrl)
+    base.pathname = '/hubs/notifications'
+    base.search = ''
+    base.hash = ''
+    return base.toString().replace(/\/$/, '')
+  } catch {
+    return `${apiUrl.replace(/\/api\/?$/, '')}/hubs/notifications`
+  }
+}
+
+export const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL as string | undefined)
+export const HUB_URL = resolveHubUrl(API_URL)
 
 export type UserRole = 'User' | 'Admin' | 'ProjectManager'
 
@@ -63,7 +83,12 @@ export async function apiFetch<T>(
     headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers })
+  let response: Response
+  try {
+    response = await fetch(`${API_URL}${path}`, { ...options, headers })
+  } catch {
+    throw new Error('Unable to reach the server. Check your connection and try again.')
+  }
 
   if (response.status === 401 && retry) {
     const newToken = await refreshAccessToken()

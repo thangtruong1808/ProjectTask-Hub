@@ -8,6 +8,7 @@ import AuthCard from '../components/ui/AuthCard'
 import { FormField } from '../components/ui/FormField'
 import SubmitButton from '../components/ui/SubmitButton'
 import { setCredentials, type AppDispatch } from '../store'
+import { usePageDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function LoginPage() {
   const dispatch = useDispatch<AppDispatch>()
@@ -16,6 +17,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  usePageDocumentTitle('signIn', loading)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -34,8 +37,9 @@ export default function LoginPage() {
 
   return (
     <AuthCard
-      title="Welcome back"
-      subtitle="Sign in to manage your tasks and notifications."
+      titleIcon={<LoginIcon size={20} />}
+      title="Sign in"
+      subtitle="Access your workspace and stay on top of your tasks."
       footer={
         <span>
           <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-700 hover:underline">
@@ -51,7 +55,11 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <FormField
           label="Email"
+          name="email"
           type="email"
+          inputMode="email"
+          autoCapitalize="none"
+          spellCheck={false}
           icon={<EmailIcon size={18} />}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -62,6 +70,7 @@ export default function LoginPage() {
         />
         <FormField
           label="Password"
+          name="password"
           type="password"
           icon={<LockIcon size={18} />}
           value={password}

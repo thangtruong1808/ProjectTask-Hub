@@ -17,6 +17,7 @@ import ProjectDeleteDialog from '../components/ProjectDeleteDialog'
 import Spinner from '../components/Spinner'
 import TablePagination from '../components/TablePagination'
 import PageHeader from '../components/ui/PageHeader'
+import PageLoadingPanel from '../components/ui/PageLoadingPanel'
 import {
   ClockIcon,
   FolderIcon,
@@ -25,6 +26,7 @@ import {
   XMarkIcon,
 } from '../components/icons/Icons'
 import type { RootState } from '../store'
+import { usePageDocumentTitle } from '../hooks/useDocumentTitle'
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
   Active: 'bg-green-100 text-green-700',
@@ -97,8 +99,8 @@ export default function ProjectsPage() {
   const isAdmin = currentUser?.role === 'Admin'
 
   const pageSubtitle = isAdmin
-    ? 'Create and manage all company projects.'
-    : 'View and manage projects you own, created, or were assigned to manage by an admin.'
+    ? 'Create, organize, and manage projects across the entire workspace.'
+    : 'Manage the projects you lead and keep your teams aligned on delivery.'
 
   const [projects, setProjects] = useState<ProjectListItem[]>([])
   const [owners, setOwners] = useState<UserListItem[]>([])
@@ -124,6 +126,8 @@ export default function ProjectsPage() {
   const [pageSize, setPageSize] = useState<number>(10)
   const formRef = useRef<HTMLFormElement>(null)
   const hasLoadedOnce = useRef(false)
+
+  usePageDocumentTitle('projects', loading && projects.length === 0)
 
   const isEditing = editingId !== null
   const isCreating = actionLoading?.type === 'create'
@@ -339,13 +343,10 @@ export default function ProjectsPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         <PageHeader
           icon={<FolderIcon size={24} />}
-          title="Project Management"
+          title="Projects"
           subtitle={pageSubtitle}
         />
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-16 shadow-sm">
-          <Spinner size="lg" label="Loading projects" />
-          <p className="text-sm font-medium text-slate-600">Loading projects...</p>
-        </div>
+        <PageLoadingPanel label="Loading projects..." hint="Fetching your project list" />
       </div>
     )
   }
@@ -355,7 +356,7 @@ export default function ProjectsPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader
           icon={<FolderIcon size={24} />}
-          title="Project Management"
+          title="Projects"
           subtitle={pageSubtitle}
         />
         {!isEditing && (

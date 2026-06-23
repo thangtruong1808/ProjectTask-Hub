@@ -12,6 +12,7 @@ import AuthCard from '../components/ui/AuthCard'
 import { FormField } from '../components/ui/FormField'
 import SubmitButton from '../components/ui/SubmitButton'
 import Spinner from '../components/Spinner'
+import { usePageDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
@@ -23,6 +24,8 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  usePageDocumentTitle('setNewPassword', loading)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -50,8 +53,9 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthCard
-      title="Reset password"
-      subtitle="Enter your reset token and choose a new password."
+      titleIcon={<LockIcon size={20} />}
+      title="Set new password"
+      subtitle="Use your reset token and choose a strong password for your account."
       footer={
         <Link
           to="/login"

@@ -5,11 +5,14 @@ import DashboardPageHeader from '../components/dashboard/DashboardPageHeader'
 import ProjectProgressCharts from '../components/dashboard/ProjectProgressCharts'
 import { ChartIcon, ClipboardIcon, UsersIcon } from '../components/icons/Icons'
 import InlineMessage from '../components/InlineMessage'
+import { usePageDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function DashboardOverviewPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  usePageDocumentTitle('dashboardOverview', loading)
 
   useEffect(() => {
     getDashboardStats()
@@ -19,7 +22,16 @@ export default function DashboardOverviewPage() {
   }, [])
 
   if (loading) {
-    return <DashboardLoadingPanel label="Loading dashboard..." hint="Fetching stats and charts" />
+    return (
+      <div className="flex min-h-full flex-1 flex-col space-y-6">
+        <DashboardPageHeader
+          icon={<ChartIcon size={24} />}
+          title="Dashboard overview"
+          subtitle="Workspace metrics and project progress at a glance."
+        />
+        <DashboardLoadingPanel label="Loading dashboard..." hint="Fetching stats and charts" />
+      </div>
+    )
   }
 
   if (error || !stats) {
@@ -39,8 +51,8 @@ export default function DashboardOverviewPage() {
     <div className="flex min-h-full flex-1 flex-col space-y-6">
       <DashboardPageHeader
         icon={<ChartIcon size={24} />}
-        title="Overview"
-        subtitle="Task and user metrics with project progress charts."
+        title="Dashboard overview"
+        subtitle="Workspace metrics and project progress at a glance."
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

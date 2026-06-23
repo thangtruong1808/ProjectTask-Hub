@@ -7,9 +7,10 @@ import {
 } from '../api/audit'
 import DashboardPageHeader from '../components/dashboard/DashboardPageHeader'
 import AuditActivityFeed from '../components/dashboard/AuditActivityFeed'
-import { ClipboardIcon } from '../components/icons/Icons'
+import { ClockIcon } from '../components/icons/Icons'
 import Spinner from '../components/Spinner'
 import TablePagination from '../components/TablePagination'
+import { usePageDocumentTitle } from '../hooks/useDocumentTitle'
 
 const ROLE_OPTIONS: { value: UserRole | ''; label: string }[] = [
   { value: '', label: 'All roles' },
@@ -29,6 +30,8 @@ export default function DashboardAuditPage() {
   const [data, setData] = useState<AuditEventListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  usePageDocumentTitle('auditLog', loading && data === null)
 
   useEffect(() => {
     let cancelled = false
@@ -72,9 +75,9 @@ export default function DashboardAuditPage() {
   return (
     <div className="flex min-h-full flex-1 flex-col space-y-6">
       <DashboardPageHeader
-        icon={<ClipboardIcon size={24} />}
-        title="Audit activity"
-        subtitle="Full history of actions performed by all user roles."
+        icon={<ClockIcon size={24} />}
+        title="Audit log"
+        subtitle="Review actions performed by every role across the workspace."
       />
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">

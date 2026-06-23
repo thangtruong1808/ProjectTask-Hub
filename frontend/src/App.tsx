@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import TodoList from './components/TodoList'
+import TasksPage from './pages/TasksPage'
 import AdminRoute from './components/layout/AdminRoute'
 import PmAdminRoute from './components/layout/PmAdminRoute'
 import AppLayout from './components/layout/AppLayout'
@@ -63,7 +63,7 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route index element={<TodoList />} />
+            <Route index element={<TasksPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route element={<PmAdminRoute />}>
               <Route path="projects" element={<ProjectsPage />} />

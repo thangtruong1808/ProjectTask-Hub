@@ -21,6 +21,7 @@ import {
 } from '../components/icons/Icons'
 import Spinner from '../components/Spinner'
 import type { RootState } from '../store'
+import { usePageDocumentTitle } from '../hooks/useDocumentTitle'
 
 const ROLE_STYLES: Record<UserRole, string> = {
   User: 'bg-slate-100 text-slate-700',
@@ -102,6 +103,8 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<UserRole | ''>('')
   const [updatingId, setUpdatingId] = useState<number | null>(null)
 
+  usePageDocumentTitle('userManagement', loading && users.length === 0)
+
   useEffect(() => {
     getAdminUsers()
       .then(setUsers)
@@ -158,8 +161,8 @@ export default function UsersPage() {
       <div className="flex min-h-full flex-1 flex-col space-y-6">
         <DashboardPageHeader
           icon={<UsersIcon size={24} />}
-          title="User Management"
-          subtitle="View all users and assign roles. Only admins can access this page."
+          title="User management"
+          subtitle="View workspace members and assign roles with confidence."
         />
         <DashboardLoadingPanel label="Loading users..." hint="Please wait a moment" />
       </div>
@@ -170,8 +173,8 @@ export default function UsersPage() {
     <div className="flex min-h-full flex-1 flex-col space-y-6">
       <DashboardPageHeader
         icon={<UsersIcon size={24} />}
-        title="User Management"
-        subtitle="View all users and assign roles. Only admins can access this page."
+        title="User management"
+        subtitle="View workspace members and assign roles with confidence."
       />
 
       {successMessage && (
