@@ -9,17 +9,20 @@ public class ProjectService : IProjectService
     private readonly IProjectRepository _projectRepository;
     private readonly IUserRepository _userRepository;
     private readonly INotificationDispatchService _notificationDispatch;
+    private readonly IAuditWriter _auditWriter;
     private readonly ICurrentUserService _currentUser;
 
     public ProjectService(
         IProjectRepository projectRepository,
         IUserRepository userRepository,
         INotificationDispatchService notificationDispatch,
+        IAuditWriter auditWriter,
         ICurrentUserService currentUser)
     {
         _projectRepository = projectRepository;
         _userRepository = userRepository;
         _notificationDispatch = notificationDispatch;
+        _auditWriter = auditWriter;
         _currentUser = currentUser;
     }
 
@@ -129,7 +132,17 @@ public class ProjectService : IProjectService
                 cancellationToken);
         }
 
-        return (await _projectRepository.GetByIdAsync(created.Id, cancellationToken)) ?? created;
+        var result = (await _projectRepository.GetByIdAsync(created.Id, cancellationToken)) ?? created;
+        await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+        {
+            Action = AuditActions.ProjectCreated,
+            EntityType = AuditEntityTypes.Project,
+            EntityId = result.Id,
+            ProjectId = result.Id,
+            ProjectName = result.Name,
+            Summary = $"Created project {AuditFormatting.ProjectLabel(result.Code, result.Name)}.",
+        }, cancellationToken);
+        return result;
     }
 
     public async Task<bool> UpdateAsync(long id, UpdateProjectRequest request, CancellationToken cancellationToken = default)
@@ -163,7 +176,21 @@ public class ProjectService : IProjectService
         existing.DueDate = request.DueDate?.Date;
         existing.UpdatedAt = DateTime.UtcNow;
 
-        return await _projectRepository.UpdateAsync(existing, cancellationToken);
+        var updated = await _projectRepository.UpdateAsync(existing, cancellationToken);
+        if (updated)
+        {
+            await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+            {
+                Action = AuditActions.ProjectUpdated,
+                EntityType = AuditEntityTypes.Project,
+                EntityId = existing.Id,
+                ProjectId = existing.Id,
+                ProjectName = existing.Name,
+                Summary = $"Updated project {AuditFormatting.ProjectLabel(existing.Code, existing.Name)}.",
+            }, cancellationToken);
+        }
+
+        return updated;
     }
 
     public async Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
@@ -174,7 +201,22 @@ public class ProjectService : IProjectService
             return false;
         }
 
-        return await _projectRepository.SoftDeleteAsync(id, DateTime.UtcNow, cancellationToken);
+        var existing = await _projectRepository.GetByIdAsync(id, cancellationToken);
+        var deleted = await _projectRepository.SoftDeleteAsync(id, DateTime.UtcNow, cancellationToken);
+        if (deleted && existing is not null)
+        {
+            await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+            {
+                Action = AuditActions.ProjectDeleted,
+                EntityType = AuditEntityTypes.Project,
+                EntityId = id,
+                ProjectId = id,
+                ProjectName = existing.Name,
+                Summary = $"Archived project {AuditFormatting.ProjectLabel(existing.Code, existing.Name)}.",
+            }, cancellationToken);
+        }
+
+        return deleted;
     }
 
     public async Task<IReadOnlyList<ProjectMemberItem>> GetMembersAsync(long projectId, CancellationToken cancellationToken = default)
@@ -241,6 +283,21 @@ public class ProjectService : IProjectService
             }
         }
 
+        if (assigned)
+        {
+            var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
+            await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+            {
+                Action = AuditActions.ProjectMemberAdded,
+                EntityType = AuditEntityTypes.Project,
+                EntityId = projectId,
+                ProjectId = projectId,
+                ProjectName = project?.Name,
+                TargetUserId = userId,
+                Summary = $"Added {AuditFormatting.FullName(user)} to project {AuditFormatting.ProjectLabel(project?.Code, project?.Name ?? "project")}.",
+            }, cancellationToken);
+        }
+
         return assigned;
     }
 
@@ -280,7 +337,23 @@ public class ProjectService : IProjectService
             }
         }
 
-        return await _projectRepository.RemoveMemberAsync(projectId, userId, cancellationToken);
+        var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
+        var removed = await _projectRepository.RemoveMemberAsync(projectId, userId, cancellationToken);
+        if (removed && user is not null)
+        {
+            await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+            {
+                Action = AuditActions.ProjectMemberRemoved,
+                EntityType = AuditEntityTypes.Project,
+                EntityId = projectId,
+                ProjectId = projectId,
+                ProjectName = project?.Name,
+                TargetUserId = userId,
+                Summary = $"Removed {AuditFormatting.FullName(user)} from project {AuditFormatting.ProjectLabel(project?.Code, project?.Name ?? "project")}.",
+            }, cancellationToken);
+        }
+
+        return removed;
     }
 
     public async Task<IReadOnlyList<UserDto>> GetAssignableUsersForProjectAsync(long projectId, CancellationToken cancellationToken = default)

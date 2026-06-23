@@ -7,11 +7,13 @@ namespace TodoList.Api.Services;
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IAuditWriter _auditWriter;
     private readonly ICurrentUserService _currentUser;
 
-    public UserService(IUserRepository userRepository, ICurrentUserService currentUser)
+    public UserService(IUserRepository userRepository, IAuditWriter auditWriter, ICurrentUserService currentUser)
     {
         _userRepository = userRepository;
+        _auditWriter = auditWriter;
         _currentUser = currentUser;
     }
 
@@ -147,6 +149,14 @@ public class UserService : IUserService
         }
 
         user.Role = role;
+        await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+        {
+            Action = AuditActions.UserRoleChanged,
+            EntityType = AuditEntityTypes.User,
+            EntityId = id,
+            TargetUserId = id,
+            Summary = $"Changed role for {AuditFormatting.FullName(user)} to {role}.",
+        }, cancellationToken);
         return AuthService.MapUser(user);
     }
 

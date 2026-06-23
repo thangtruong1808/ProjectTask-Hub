@@ -22,4 +22,17 @@ public class DashboardController : ControllerBase
     {
         return Ok(await _dashboardService.GetStatsAsync(cancellationToken));
     }
+
+    [HttpGet("projects/progress")]
+    public async Task<ActionResult<IEnumerable<ProjectProgressItem>>> GetProjectProgress(CancellationToken cancellationToken)
+    {
+        return Ok(await _dashboardService.GetProjectProgressAsync(cancellationToken));
+    }
+
+    [HttpGet("projects/{id:long}/progress")]
+    public async Task<ActionResult<ProjectProgressItem>> GetProjectProgressById(long id, CancellationToken cancellationToken)
+    {
+        var item = await _dashboardService.GetProjectProgressByIdAsync(id, cancellationToken);
+        return item is null ? NotFound() : Ok(item);
+    }
 }

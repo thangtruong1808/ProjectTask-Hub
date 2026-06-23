@@ -4,8 +4,10 @@ import TodoList from './components/TodoList'
 import AdminRoute from './components/layout/AdminRoute'
 import PmAdminRoute from './components/layout/PmAdminRoute'
 import AppLayout from './components/layout/AppLayout'
+import DashboardLayout from './components/dashboard/DashboardLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
-import DashboardPage from './pages/DashboardPage'
+import DashboardAuditPage from './pages/DashboardAuditPage'
+import DashboardOverviewPage from './pages/DashboardOverviewPage'
 import ProjectsPage from './pages/ProjectsPage'
 import UsersPage from './pages/UsersPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
@@ -67,8 +69,12 @@ function App() {
               <Route path="projects" element={<ProjectsPage />} />
             </Route>
             <Route element={<AdminRoute />}>
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="users" element={<UsersPage />} />
+              <Route path="dashboard" element={<DashboardLayout />}>
+                <Route index element={<DashboardOverviewPage />} />
+                <Route path="users" element={<UsersPage />} />
+                <Route path="audit" element={<DashboardAuditPage />} />
+              </Route>
+              <Route path="users" element={<Navigate to="/dashboard/users" replace />} />
             </Route>
           </Route>
         </Route>

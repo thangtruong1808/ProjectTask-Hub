@@ -95,11 +95,37 @@ internal static class TaskSqlQueries
         FROM Tasks;
         """;
 
-    public static readonly string SelectRecentAssignments = $"""
-        SELECT {SelectColumns}
-        {FromJoin}
-        WHERE t.AssignedAt IS NOT NULL
-        ORDER BY t.AssignedAt DESC
-        LIMIT @Limit;
+    public const string SelectProjectProgress = """
+        SELECT
+            p.Id AS ProjectId,
+            p.Name AS ProjectName,
+            p.Code AS ProjectCode,
+            COALESCE(SUM(t.Status = 0), 0) AS Pending,
+            COALESCE(SUM(t.Status = 1), 0) AS InProgress,
+            COALESCE(SUM(t.Status = 2), 0) AS Completed,
+            COALESCE(SUM(t.Status = 3), 0) AS Cancelled,
+            COUNT(t.Id) AS Total
+        FROM Projects p
+        LEFT JOIN Tasks t ON t.ProjectId = p.Id
+        WHERE p.IsActive = 1
+        GROUP BY p.Id, p.Name, p.Code
+        ORDER BY p.Name;
+        """;
+
+    public const string SelectProjectProgressById = """
+        SELECT
+            p.Id AS ProjectId,
+            p.Name AS ProjectName,
+            p.Code AS ProjectCode,
+            COALESCE(SUM(t.Status = 0), 0) AS Pending,
+            COALESCE(SUM(t.Status = 1), 0) AS InProgress,
+            COALESCE(SUM(t.Status = 2), 0) AS Completed,
+            COALESCE(SUM(t.Status = 3), 0) AS Cancelled,
+            COUNT(t.Id) AS Total
+        FROM Projects p
+        LEFT JOIN Tasks t ON t.ProjectId = p.Id
+        WHERE p.IsActive = 1 AND p.Id = @ProjectId
+        GROUP BY p.Id, p.Name, p.Code
+        LIMIT 1;
         """;
 }

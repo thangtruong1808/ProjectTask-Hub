@@ -4,3 +4,20 @@ body {
   margin: 0;
   min-height: 100vh;
 }
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+html.dashboard-shell,
+body.dashboard-shell {
+  overflow: hidden;
+  overscroll-behavior: none;
+}

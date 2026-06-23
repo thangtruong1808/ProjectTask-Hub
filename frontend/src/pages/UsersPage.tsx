@@ -8,6 +8,8 @@ import {
   userDisplayName,
   type UserListItem,
 } from '../api/users'
+import DashboardLoadingPanel from '../components/dashboard/DashboardLoadingPanel'
+import DashboardPageHeader from '../components/dashboard/DashboardPageHeader'
 import InlineMessage from '../components/InlineMessage'
 import {
   BriefcaseIcon,
@@ -18,7 +20,6 @@ import {
   UsersIcon,
 } from '../components/icons/Icons'
 import Spinner from '../components/Spinner'
-import PageHeader from '../components/ui/PageHeader'
 import type { RootState } from '../store'
 
 const ROLE_STYLES: Record<UserRole, string> = {
@@ -154,24 +155,20 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <PageHeader
+      <div className="flex min-h-full flex-1 flex-col space-y-6">
+        <DashboardPageHeader
           icon={<UsersIcon size={24} />}
           title="User Management"
           subtitle="View all users and assign roles. Only admins can access this page."
         />
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-16 shadow-sm">
-          <Spinner size="lg" label="Loading users" />
-          <p className="text-sm font-medium text-slate-600">Loading users...</p>
-          <p className="text-xs text-slate-400">Please wait a moment</p>
-        </div>
+        <DashboardLoadingPanel label="Loading users..." hint="Please wait a moment" />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <PageHeader
+    <div className="flex min-h-full flex-1 flex-col space-y-6">
+      <DashboardPageHeader
         icon={<UsersIcon size={24} />}
         title="User Management"
         subtitle="View all users and assign roles. Only admins can access this page."
@@ -288,8 +285,9 @@ export default function UsersPage() {
           )}
         </div>
 
-        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
-          <table className="w-full min-w-[720px] text-left text-sm">
+        <div className="hidden min-w-0 rounded-xl border border-slate-200 md:block">
+          <div className="scrollbar-none overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="px-4 py-3">Name</th>
@@ -346,6 +344,7 @@ export default function UsersPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

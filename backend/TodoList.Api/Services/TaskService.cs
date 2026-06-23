@@ -12,6 +12,7 @@ public class TaskService : ITaskService
     private readonly IUserRepository _userRepository;
     private readonly IProjectRepository _projectRepository;
     private readonly INotificationDispatchService _notificationDispatch;
+    private readonly IAuditWriter _auditWriter;
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<TaskService> _logger;
 
@@ -20,6 +21,7 @@ public class TaskService : ITaskService
         IUserRepository userRepository,
         IProjectRepository projectRepository,
         INotificationDispatchService notificationDispatch,
+        IAuditWriter auditWriter,
         ICurrentUserService currentUser,
         ILogger<TaskService> logger)
     {
@@ -27,6 +29,7 @@ public class TaskService : ITaskService
         _userRepository = userRepository;
         _projectRepository = projectRepository;
         _notificationDispatch = notificationDispatch;
+        _auditWriter = auditWriter;
         _currentUser = currentUser;
         _logger = logger;
     }
@@ -107,7 +110,17 @@ public class TaskService : ITaskService
             UpdatedAt = now
         };
 
-        return await _taskRepository.CreateAsync(task, cancellationToken);
+        var created = await _taskRepository.CreateAsync(task, cancellationToken);
+        await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+        {
+            Action = AuditActions.TaskCreated,
+            EntityType = AuditEntityTypes.Task,
+            EntityId = created.Id,
+            ProjectId = created.ProjectId,
+            ProjectName = created.ProjectName,
+            Summary = $"Created task \"{created.Name}\" in {AuditFormatting.ProjectLabel(null, created.ProjectName ?? "project")}.",
+        }, cancellationToken);
+        return created;
     }
 
     public async Task<bool> UpdateAsync(long id, UpdateTaskRequest request, CancellationToken cancellationToken = default)
@@ -145,6 +158,21 @@ public class TaskService : ITaskService
             }
         }
 
+        if (updated)
+        {
+            await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+            {
+                Action = previousStatus != request.Status ? AuditActions.TaskStatusChanged : AuditActions.TaskUpdated,
+                EntityType = AuditEntityTypes.Task,
+                EntityId = existing.Id,
+                ProjectId = existing.ProjectId,
+                ProjectName = existing.ProjectName,
+                Summary = previousStatus != request.Status
+                    ? $"Updated task \"{existing.Name}\" status to {FormatStatus(request.Status)}."
+                    : $"Updated task \"{existing.Name}\".",
+            }, cancellationToken);
+        }
+
         return updated;
     }
 
@@ -167,6 +195,19 @@ public class TaskService : ITaskService
                 await _notificationDispatch.NotifyManagersStatusUpdatedAsync(
                     existing, updater, request.Status, cancellationToken);
             }
+        }
+
+        if (updated)
+        {
+            await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+            {
+                Action = AuditActions.TaskStatusChanged,
+                EntityType = AuditEntityTypes.Task,
+                EntityId = existing.Id,
+                ProjectId = existing.ProjectId,
+                ProjectName = existing.ProjectName,
+                Summary = $"Changed task \"{existing.Name}\" status to {FormatStatus(request.Status)}.",
+            }, cancellationToken);
         }
 
         return updated;
@@ -222,6 +263,16 @@ public class TaskService : ITaskService
         }
 
         await _notificationDispatch.NotifyUserTaskAssignedAsync(request.UserId, task, assigner, cancellationToken);
+        await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+        {
+            Action = AuditActions.TaskAssigned,
+            EntityType = AuditEntityTypes.Task,
+            EntityId = task.Id,
+            ProjectId = task.ProjectId,
+            ProjectName = task.ProjectName,
+            TargetUserId = request.UserId,
+            Summary = $"Assigned task \"{task.Name}\" to {AuditFormatting.FullName(assignee)}.",
+        }, cancellationToken);
         return true;
     }
 
@@ -238,7 +289,21 @@ public class TaskService : ITaskService
             return false;
         }
 
-        return await _taskRepository.DeleteAsync(id, cancellationToken);
+        var deleted = await _taskRepository.DeleteAsync(id, cancellationToken);
+        if (deleted)
+        {
+            await _auditWriter.WriteForCurrentUserAsync(new AuditWriteRequest
+            {
+                Action = AuditActions.TaskDeleted,
+                EntityType = AuditEntityTypes.Task,
+                EntityId = existing.Id,
+                ProjectId = existing.ProjectId,
+                ProjectName = existing.ProjectName,
+                Summary = $"Deleted task \"{existing.Name}\".",
+            }, cancellationToken);
+        }
+
+        return deleted;
     }
 
     private async Task<bool> CanAccessTaskAsync(TaskItem task, CancellationToken cancellationToken)
@@ -273,4 +338,13 @@ public class TaskService : ITaskService
 
         return newStatus is Models.TaskStatus.InProgress or Models.TaskStatus.Completed;
     }
+
+    private static string FormatStatus(Models.TaskStatus status) => status switch
+    {
+        Models.TaskStatus.Pending => "Pending",
+        Models.TaskStatus.InProgress => "In Progress",
+        Models.TaskStatus.Completed => "Completed",
+        Models.TaskStatus.Cancelled => "Cancelled",
+        _ => status.ToString(),
+    };
 }

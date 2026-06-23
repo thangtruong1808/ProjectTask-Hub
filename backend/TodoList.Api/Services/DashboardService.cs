@@ -19,14 +19,10 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardStats> GetStatsAsync(CancellationToken cancellationToken = default)
     {
-        if (!_currentUser.IsAdmin)
-        {
-            throw new UnauthorizedAccessException("Only admins can access the dashboard.");
-        }
+        EnsureAdmin();
 
         var counts = await _taskRepository.GetStatusCountsAsync(cancellationToken);
         var users = await _userRepository.CountActiveAsync(cancellationToken);
-        var recent = await _taskRepository.GetRecentAssignmentsAsync(10, cancellationToken);
 
         return new DashboardStats
         {
@@ -36,7 +32,26 @@ public class DashboardService : IDashboardService
             InProgressTasks = counts.InProgress,
             CompletedTasks = counts.Completed,
             CancelledTasks = counts.Cancelled,
-            RecentAssignments = recent
         };
+    }
+
+    public async Task<IReadOnlyList<ProjectProgressItem>> GetProjectProgressAsync(CancellationToken cancellationToken = default)
+    {
+        EnsureAdmin();
+        return await _taskRepository.GetProjectProgressAsync(cancellationToken);
+    }
+
+    public async Task<ProjectProgressItem?> GetProjectProgressByIdAsync(long projectId, CancellationToken cancellationToken = default)
+    {
+        EnsureAdmin();
+        return await _taskRepository.GetProjectProgressByIdAsync(projectId, cancellationToken);
+    }
+
+    private void EnsureAdmin()
+    {
+        if (!_currentUser.IsAdmin)
+        {
+            throw new UnauthorizedAccessException("Only admins can access the dashboard.");
+        }
     }
 }

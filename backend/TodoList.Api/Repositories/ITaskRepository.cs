@@ -14,5 +14,6 @@ public interface ITaskRepository
     Task<bool> AssignAsync(long id, long assignedToUserId, long assignedByUserId, DateTime assignedAt, DateTime updatedAt, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
     Task<(int Total, int Pending, int InProgress, int Completed, int Cancelled)> GetStatusCountsAsync(CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<TaskItem>> GetRecentAssignmentsAsync(int limit, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ProjectProgressItem>> GetProjectProgressAsync(CancellationToken cancellationToken = default);
+    Task<ProjectProgressItem?> GetProjectProgressByIdAsync(long projectId, CancellationToken cancellationToken = default);
 }

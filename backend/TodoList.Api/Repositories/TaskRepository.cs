@@ -127,11 +127,21 @@ public class TaskRepository : ITaskRepository
         return ((int)row.Total, (int)row.Pending, (int)row.InProgress, (int)row.Completed, (int)row.Cancelled);
     }
 
-    public async Task<IReadOnlyList<TaskItem>> GetRecentAssignmentsAsync(int limit, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ProjectProgressItem>> GetProjectProgressAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = _connectionFactory.CreateConnection();
-        var tasks = await connection.QueryAsync<TaskItem>(
-            new CommandDefinition(TaskSqlQueries.SelectRecentAssignments, new { Limit = limit }, cancellationToken: cancellationToken));
-        return tasks.AsList();
+        var items = await connection.QueryAsync<ProjectProgressItem>(
+            new CommandDefinition(TaskSqlQueries.SelectProjectProgress, cancellationToken: cancellationToken));
+        return items.AsList();
+    }
+
+    public async Task<ProjectProgressItem?> GetProjectProgressByIdAsync(long projectId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = _connectionFactory.CreateConnection();
+        return await connection.QuerySingleOrDefaultAsync<ProjectProgressItem>(
+            new CommandDefinition(
+                TaskSqlQueries.SelectProjectProgressById,
+                new { ProjectId = projectId },
+                cancellationToken: cancellationToken));
     }
 }

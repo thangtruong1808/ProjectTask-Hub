@@ -105,7 +105,6 @@ public class DashboardStats
     public int InProgressTasks { get; set; }
     public int CompletedTasks { get; set; }
     public int CancelledTasks { get; set; }
-    public IReadOnlyList<TaskItem> RecentAssignments { get; set; } = [];
 }
 
 public class NotificationListResponse

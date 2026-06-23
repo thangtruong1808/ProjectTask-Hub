@@ -38,4 +38,6 @@ public interface INotificationService
 public interface IDashboardService
 {
     Task<DashboardStats> GetStatsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ProjectProgressItem>> GetProjectProgressAsync(CancellationToken cancellationToken = default);
+    Task<ProjectProgressItem?> GetProjectProgressByIdAsync(long projectId, CancellationToken cancellationToken = default);
 }

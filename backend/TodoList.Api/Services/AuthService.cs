@@ -9,12 +9,18 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IAuthRepository _authRepository;
     private readonly JwtTokenService _jwtTokenService;
+    private readonly IAuditWriter _auditWriter;
 
-    public AuthService(IUserRepository userRepository, IAuthRepository authRepository, JwtTokenService jwtTokenService)
+    public AuthService(
+        IUserRepository userRepository,
+        IAuthRepository authRepository,
+        JwtTokenService jwtTokenService,
+        IAuditWriter auditWriter)
     {
         _userRepository = userRepository;
         _authRepository = authRepository;
         _jwtTokenService = jwtTokenService;
+        _auditWriter = auditWriter;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -53,6 +59,14 @@ public class AuthService : IAuthService
         {
             throw new UnauthorizedAccessException("Invalid email or password.");
         }
+
+        await _auditWriter.WriteForUserAsync(user, new AuditWriteRequest
+        {
+            Action = AuditActions.UserLoggedIn,
+            EntityType = AuditEntityTypes.Auth,
+            EntityId = user.Id,
+            Summary = $"{AuditFormatting.FullName(user)} signed in.",
+        }, cancellationToken);
 
         return await IssueTokensAsync(user, cancellationToken);
     }
